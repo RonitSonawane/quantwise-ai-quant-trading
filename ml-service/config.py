@@ -1,3 +1,4 @@
+#  shared constants
 from __future__ import annotations
 
 RANDOM_SEED = 42

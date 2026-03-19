@@ -1,3 +1,5 @@
+# hidden markov model engine for 6-state classification 6-state HMM + regime detection
+
 from __future__ import annotations
 
 from collections import Counter

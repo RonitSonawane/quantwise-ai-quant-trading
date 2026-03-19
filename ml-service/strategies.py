@@ -1,3 +1,4 @@
+# all 15 strategies are defined here
 from __future__ import annotations
 
 import numpy as np
