@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { LineChart } from 'lucide-react'
 import type { IndexTickerId } from '../../lib/indexBinanceMap'
 import IndexChartModal from '../charts/IndexChartModal'
+import { useIndexChartModal } from '../../context/IndexChartModalContext'
 
 const items: Array<{ id: IndexTickerId; label: string; value: string; ch: string }> = [
   { id: 'NIFTY50', label: 'NIFTY 50', value: '24,832', ch: '+0.43%' },
@@ -31,12 +32,19 @@ function Segment({ onOpen }: { onOpen: (id: IndexTickerId) => void }) {
 }
 
 export default function LiveIndexBanner() {
+  const { setChartModalOpen } = useIndexChartModal()
   const [modalOpen, setModalOpen] = useState(false)
   const [activeId, setActiveId] = useState<IndexTickerId | null>(null)
 
   const openChart = (id: IndexTickerId) => {
     setActiveId(id)
     setModalOpen(true)
+    setChartModalOpen(true)
+  }
+
+  const closeModal = () => {
+    setModalOpen(false)
+    setChartModalOpen(false)
   }
 
   return (
@@ -49,7 +57,7 @@ export default function LiveIndexBanner() {
           <Segment onOpen={openChart} />
         </div>
       </div>
-      <IndexChartModal open={modalOpen} indexId={activeId} onClose={() => setModalOpen(false)} />
+      <IndexChartModal open={modalOpen} indexId={activeId} onClose={closeModal} />
     </>
   )
 }

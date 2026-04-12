@@ -18,7 +18,7 @@ export default function EquityCurveChart({
   height?: number
 }) {
   return (
-    <div style={{ width: '100%', height }}>
+    <div style={{ width: '100%', height, minWidth: 0, minHeight: 0 }}>
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={data} margin={{ top: 8, right: 12, left: 4, bottom: 4 }}>
           <defs>

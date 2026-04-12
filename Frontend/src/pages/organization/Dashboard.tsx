@@ -239,7 +239,7 @@ export default function OrganizationDashboard() {
 
         <div className={card}>
           <h2 className="text-lg font-semibold text-white">Rolling 60d Sharpe (mock)</h2>
-          <div style={{ width: '100%', height: 300 }} className="mt-3">
+          <div style={{ width: '100%', height: 300, minWidth: 0, minHeight: 0 }} className="mt-3">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={rollSharpe} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
                 <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />

@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import Navbar from './Navbar'
 import Footer from './Footer'
 import LiveIndexBanner from '../landing/LiveIndexBanner'
+import { IndexChartModalProvider } from '../../context/IndexChartModalContext'
 
 export default function Layout({ children }: { children: ReactNode }) {
   const pageBg = useMemo(() => 'bg-[#0A0A0F]', [])
@@ -11,6 +12,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   const isRoleShell = /^\/(student|organization)\//.test(pathname)
 
   return (
+    <IndexChartModalProvider>
     <div className={`${pageBg} min-h-screen`}>
       {pathname === '/' ? <LiveIndexBanner /> : null}
       <Navbar />
@@ -32,5 +34,6 @@ export default function Layout({ children }: { children: ReactNode }) {
       </AnimatePresence>
       <Footer />
     </div>
+    </IndexChartModalProvider>
   )
 }

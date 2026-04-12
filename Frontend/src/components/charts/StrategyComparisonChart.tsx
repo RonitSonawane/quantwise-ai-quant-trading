@@ -14,7 +14,10 @@ const mock = buildMultiStrategyEquityPoints(80)
 
 export default function StrategyComparisonChart({ height = 300 }: { height?: number }) {
   return (
-    <div style={{ width: '100%', height }} className="rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-3">
+    <div
+      style={{ width: '100%', height, minWidth: 0, minHeight: 0 }}
+      className="rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-3"
+    >
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={mock} margin={{ top: 8, right: 16, left: 4, bottom: 4 }}>
           <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />

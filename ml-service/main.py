@@ -6,8 +6,9 @@ from typing import Any, Dict, Literal, Optional
 
 import numpy as np
 import pandas as pd
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from backtest_engine import backtest_all, simulate_investment
@@ -124,13 +125,48 @@ class QuantWiseState:
 
 
 app = FastAPI(title="QuantWise v3 ML Service", version="3.0.0")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:5174",
+        "http://localhost:3000",
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=3600,
 )
+
+
+@app.options("/backtest")
+async def backtest_options(_request: Request) -> JSONResponse:
+    return JSONResponse(
+        content={},
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+        },
+    )
+
+
+@app.options("/simulate")
+async def simulate_options(_request: Request) -> JSONResponse:
+    return JSONResponse(
+        content={},
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+        },
+    )
+
+
 STATE = QuantWiseState()
 
 

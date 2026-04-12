@@ -43,7 +43,7 @@ export default function IndividualPortfolioPage() {
             </div>
             <div className="mt-5">
               <div className="text-sm font-semibold text-white/80">Allocation</div>
-              <div style={{ width: '100%', height: 300 }} className="mt-3">
+              <div style={{ width: '100%', height: 300, minWidth: 0, minHeight: 0 }} className="mt-3">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie data={allocation} dataKey="value" innerRadius={40} outerRadius={72} paddingAngle={2}>

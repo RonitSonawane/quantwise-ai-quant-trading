@@ -153,7 +153,7 @@ export default function OrganizationAnalyticsPage() {
           ))}
         </div>
         <h3 className="mt-8 text-sm font-semibold text-white/80">Drawdown analysis (mock)</h3>
-        <div style={{ width: '100%', height: 300 }} className="mt-3">
+        <div style={{ width: '100%', height: 300, minWidth: 0, minHeight: 0 }} className="mt-3">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={dd} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />

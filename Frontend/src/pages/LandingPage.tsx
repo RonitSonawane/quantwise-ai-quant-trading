@@ -1,12 +1,15 @@
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import Hero3D from '../components/landing/Hero3D'
+import { useIndexChartModal } from '../context/IndexChartModalContext'
 import FeatureCards from '../components/landing/FeatureCards'
 import StrategyPerformanceSection from '../components/landing/StrategyPerformanceSection'
 import HowItWorksSection from '../components/landing/HowItWorksSection'
 import UserTypeCards from '../components/landing/UserTypeCards'
 
 export default function LandingPage() {
+  const { chartModalOpen } = useIndexChartModal()
+
   return (
     <div className="relative min-h-0 overflow-x-hidden">
       <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_20%_10%,rgba(124,58,237,0.22),transparent_35%),radial-gradient(circle_at_80%_20%,rgba(37,99,235,0.15),transparent_40%),radial-gradient(circle_at_50%_90%,rgba(13,148,136,0.1),transparent_45%)]" />
@@ -60,7 +63,7 @@ export default function LandingPage() {
           className="mt-10 w-full max-w-xl flex-1 lg:mt-0 lg:max-w-none"
         >
           <div className="overflow-hidden rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] shadow-glow">
-            <Hero3D />
+            <Hero3D hidden={chartModalOpen} />
           </div>
         </motion.div>
       </section>

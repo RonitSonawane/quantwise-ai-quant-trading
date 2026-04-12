@@ -4,11 +4,16 @@ import { Canvas } from '@react-three/fiber'
 import { Suspense } from 'react'
 import FinancialMarket3D from '../3d/FinancialMarket3D'
 
-export default function Hero3D() {
+export default function Hero3D({ hidden = false }: { hidden?: boolean }) {
   return (
     <Canvas
       camera={{ position: [0, 2.4, 6.2], fov: 42 }}
-      style={{ height: 300, width: '100%' }}
+      style={{
+        height: 300,
+        width: '100%',
+        display: hidden ? 'none' : 'block',
+        visibility: hidden ? 'hidden' : 'visible',
+      }}
       dpr={[1, 2]}
       gl={{ antialias: true, alpha: true }}
     >

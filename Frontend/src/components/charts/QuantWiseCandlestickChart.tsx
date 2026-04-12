@@ -68,6 +68,7 @@ export default function QuantWiseCandlestickChart({
   const showToolbar = height >= 120
 
   useEffect(() => {
+    let isDisposed = false
     disposedRef.current = false
     if (!containerRef.current) return
 
@@ -113,6 +114,7 @@ export default function QuantWiseCandlestickChart({
     seriesRef.current = priceSeries as OhlcSeriesApi
 
     const handleResize = () => {
+      if (isDisposed || disposedRef.current) return
       if (containerRef.current && chartRef.current) {
         chartRef.current.applyOptions({
           width: containerRef.current.clientWidth,
@@ -137,6 +139,8 @@ export default function QuantWiseCandlestickChart({
           'com',
         )
 
+        if (isDisposed || disposedRef.current) return
+
         if (bars.length === 0) {
           setStatus('error')
           return
@@ -158,12 +162,12 @@ export default function QuantWiseCandlestickChart({
         setStatus('live')
       } catch (err) {
         console.error('Failed to fetch chart data:', err)
-        setStatus('error')
+        if (!isDisposed) setStatus('error')
       }
     }
 
     const connectWebSocket = () => {
-      if (disposedRef.current) return
+      if (isDisposed || disposedRef.current) return
       try {
         const ws = new WebSocket(
           `wss://stream.binance.com:9443/ws/${binanceSymbol.toLowerCase()}@kline_${interval}`,
@@ -171,6 +175,7 @@ export default function QuantWiseCandlestickChart({
         wsRef.current = ws
 
         ws.onmessage = (event) => {
+          if (isDisposed || disposedRef.current || !seriesRef.current) return
           const data = JSON.parse(event.data) as { k?: Record<string, string> }
           const kline = data.k
           if (!kline) return
@@ -181,37 +186,55 @@ export default function QuantWiseCandlestickChart({
             low: parseFloat(kline.l),
             close: parseFloat(kline.c),
           }
-          if (seriesRef.current) {
-            seriesRef.current.update(bar)
-            setLastPrice(parseFloat(kline.c))
-            setStatus('live')
-          }
+          seriesRef.current.update(bar)
+          setLastPrice(parseFloat(kline.c))
+          setStatus('live')
         }
 
-        ws.onerror = () => setStatus('delayed')
+        ws.onerror = () => {
+          if (!isDisposed && !disposedRef.current) setStatus('delayed')
+        }
         ws.onclose = () => {
-          if (disposedRef.current) return
+          if (isDisposed || disposedRef.current) return
           reconnectRef.current = setTimeout(connectWebSocket, 5000)
         }
       } catch {
-        setStatus('delayed')
+        if (!isDisposed) setStatus('delayed')
       }
     }
 
     void fetchData()
 
     return () => {
+      isDisposed = true
       disposedRef.current = true
       if (reconnectRef.current) {
         clearTimeout(reconnectRef.current)
         reconnectRef.current = null
       }
       window.removeEventListener('resize', handleResize)
-      wsRef.current?.close()
-      wsRef.current = null
-      chartRef.current?.remove()
-      chartRef.current = null
+      const ws = wsRef.current
+      if (ws) {
+        ws.onmessage = null
+        ws.onerror = null
+        ws.onclose = null
+        try {
+          ws.close()
+        } catch {
+          /* ignore */
+        }
+        wsRef.current = null
+      }
       seriesRef.current = null
+      const c = chartRef.current
+      chartRef.current = null
+      if (c) {
+        try {
+          c.remove()
+        } catch {
+          /* already disposed */
+        }
+      }
     }
   }, [binanceSymbol, interval, height, mode])
 

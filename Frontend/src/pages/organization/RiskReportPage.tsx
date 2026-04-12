@@ -38,7 +38,7 @@ export default function OrganizationRiskReportPage() {
 
       <div className={card}>
         <h2 className="text-lg font-semibold text-white">Stress index (mock)</h2>
-        <div style={{ width: '100%', height: 300 }} className="mt-4">
+        <div style={{ width: '100%', height: 300, minWidth: 0, minHeight: 0 }} className="mt-4">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={series} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
