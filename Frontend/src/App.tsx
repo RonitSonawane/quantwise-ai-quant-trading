@@ -3,6 +3,8 @@ import Layout from './components/layout/Layout'
 import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/auth/LoginPage'
 import RegisterPage from './pages/auth/RegisterPage'
+import StudentShell from './components/layout/StudentShell'
+import OrganizationShell from './components/layout/OrganizationShell'
 import IndividualDashboard from './pages/individual/Dashboard'
 import IndividualBacktestPage from './pages/individual/BacktestPage'
 import IndividualSimulationPage from './pages/individual/SimulationPage'
@@ -12,7 +14,17 @@ import IndividualPortfolioPage from './pages/individual/PortfolioPage'
 import IndividualHistoryPage from './pages/individual/HistoryPage'
 import IndividualProfilePage from './pages/individual/ProfilePage'
 import StudentDashboard from './pages/student/Dashboard'
+import StudentLearnPage from './pages/student/LearnPage'
+import StudentResearchLabPage from './pages/student/ResearchLabPage'
+import StudentExperimentsPage from './pages/student/ExperimentsPage'
+import StudentStrategiesPage from './pages/student/StrategiesPage'
 import OrganizationDashboard from './pages/organization/Dashboard'
+import OrganizationAnalyticsPage from './pages/organization/AnalyticsPage'
+import OrganizationAPIAccessPage from './pages/organization/APIAccessPage'
+import OrganizationBulkBacktestPage from './pages/organization/BulkBacktestPage'
+import OrganizationTeamPage from './pages/organization/TeamPage'
+import OrganizationExportPage from './pages/organization/ExportPage'
+import OrganizationRiskReportPage from './pages/organization/RiskReportPage'
 import RequireAuth from './components/ui/RequireAuth'
 
 export default function App() {
@@ -43,28 +55,40 @@ export default function App() {
         />
 
         <Route
-          path="/student/*"
+          path="/student"
           element={
             <RequireAuth userType="student">
-              <Routes>
-                <Route path="dashboard" element={<StudentDashboard />} />
-                <Route path="*" element={<Navigate to="dashboard" replace />} />
-              </Routes>
+              <StudentShell />
             </RequireAuth>
           }
-        />
+        >
+          <Route path="dashboard" element={<StudentDashboard />} />
+          <Route path="learn" element={<StudentLearnPage />} />
+          <Route path="research-lab" element={<StudentResearchLabPage />} />
+          <Route path="experiments" element={<StudentExperimentsPage />} />
+          <Route path="strategies" element={<StudentStrategiesPage />} />
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="*" element={<Navigate to="dashboard" replace />} />
+        </Route>
 
         <Route
-          path="/organization/*"
+          path="/organization"
           element={
             <RequireAuth userType="organization">
-              <Routes>
-                <Route path="dashboard" element={<OrganizationDashboard />} />
-                <Route path="*" element={<Navigate to="dashboard" replace />} />
-              </Routes>
+              <OrganizationShell />
             </RequireAuth>
           }
-        />
+        >
+          <Route path="dashboard" element={<OrganizationDashboard />} />
+          <Route path="analytics" element={<OrganizationAnalyticsPage />} />
+          <Route path="api-access" element={<OrganizationAPIAccessPage />} />
+          <Route path="bulk-backtest" element={<OrganizationBulkBacktestPage />} />
+          <Route path="risk-report" element={<OrganizationRiskReportPage />} />
+          <Route path="team" element={<OrganizationTeamPage />} />
+          <Route path="export" element={<OrganizationExportPage />} />
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="*" element={<Navigate to="dashboard" replace />} />
+        </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

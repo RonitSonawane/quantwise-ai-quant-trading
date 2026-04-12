@@ -11,7 +11,7 @@ const userTypes: Array<{ value: UserType; label: string }> = [
 export default function RegisterPage() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { register, token } = useAuth()
+  const { register, token, userType: authUserType } = useAuth()
 
   const initialType = useMemo<UserType>(() => {
     const sp = new URLSearchParams(location.search)
@@ -32,8 +32,8 @@ export default function RegisterPage() {
   }, [initialType])
 
   useEffect(() => {
-    if (token) navigate(`/${userType}/dashboard`)
-  }, [navigate, token, userType])
+    if (token && authUserType) navigate(`/${authUserType}/dashboard`, { replace: true })
+  }, [navigate, token, authUserType])
 
   return (
     <div className="mx-auto max-w-md">

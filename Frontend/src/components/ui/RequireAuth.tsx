@@ -12,7 +12,9 @@ export default function RequireAuth({
   const { token, userType: storedUserType } = useAuth()
 
   if (!token) return <Navigate to="/login" replace />
-  if (!storedUserType || storedUserType !== userType) return <Navigate to={`/${userType}/dashboard`} replace />
+  if (!storedUserType || storedUserType !== userType) {
+    return <Navigate to={storedUserType ? `/${storedUserType}/dashboard` : '/login'} replace />
+  }
   return <>{children}</>
 }
 

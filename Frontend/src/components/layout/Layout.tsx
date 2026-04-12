@@ -8,6 +8,7 @@ import LiveIndexBanner from '../landing/LiveIndexBanner'
 export default function Layout({ children }: { children: ReactNode }) {
   const pageBg = useMemo(() => 'bg-[#0A0A0F]', [])
   const { pathname } = useLocation()
+  const isRoleShell = /^\/(student|organization)\//.test(pathname)
 
   return (
     <div className={`${pageBg} min-h-screen`}>
@@ -20,7 +21,11 @@ export default function Layout({ children }: { children: ReactNode }) {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -4 }}
           transition={{ duration: 0.2 }}
-          className="mx-auto max-w-7xl px-6 py-8"
+          className={
+            isRoleShell
+              ? 'mx-auto flex w-full max-w-[1920px] justify-center px-0 py-0'
+              : 'mx-auto max-w-7xl px-6 py-8'
+          }
         >
           {children}
         </motion.div>
