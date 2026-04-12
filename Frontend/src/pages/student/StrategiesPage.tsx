@@ -107,7 +107,7 @@ export default function StudentStrategiesPage() {
             </div>
             <div className="mt-6">
               <div className="text-xs font-semibold uppercase text-white/45">Vs Buy &amp; Hold (mock)</div>
-              <div style={{ width: '100%', height: 200 }} className="mt-2">
+              <div style={{ width: '100%', height: 300 }} className="mt-2">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={mini} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
                     <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />

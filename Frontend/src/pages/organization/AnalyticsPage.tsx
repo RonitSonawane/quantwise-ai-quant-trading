@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react'
+import LazyQuantWiseCandlestickChart from '../../components/charts/LazyQuantWiseCandlestickChart'
+import { labelForSymbol } from '../../lib/indexBinanceMap'
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid, BarChart, Bar, Legend } from 'recharts'
 import StrategyTable from '../../components/dashboard/StrategyTable'
 import { buildStrategyTableColumns } from '../../lib/backtestColumns'
@@ -25,6 +27,9 @@ const regimeWinners = [
 ]
 
 export default function OrganizationAnalyticsPage() {
+  const [advSymbol, setAdvSymbol] = useState<'BTCUSDT' | 'ETHUSDT' | 'BNBUSDT'>('BTCUSDT')
+  const [advIv, setAdvIv] = useState<'1m' | '5m' | '15m' | '1h' | '1d'>('15m')
+  const [advSeries, setAdvSeries] = useState<'candlestick' | 'ohlc'>('candlestick')
   const [tab, setTab] = useState<'nifty' | 'sp500' | 'side'>('nifty')
 
   const rows = tab === 'nifty' ? niftyMock : tab === 'sp500' ? spMock : [...niftyMock.map((r) => ({ ...r, Index: 'NIFTY' })), ...spMock.map((r) => ({ ...r, Index: 'S&P500' }))]
@@ -54,6 +59,66 @@ export default function OrganizationAnalyticsPage() {
       </div>
 
       <section className={card}>
+        <h2 className="text-lg font-semibold text-white">Advanced live chart</h2>
+        <p className="mt-1 text-sm text-white/50">Full-width live chart with symbol, interval, and series type controls.</p>
+        <div className="mt-4 flex flex-wrap gap-4">
+          <label className="text-sm text-white/70">
+            Symbol
+            <select
+              className="mt-1 rounded-lg border border-white/10 bg-zinc-950 px-3 py-2 text-sm text-white"
+              value={advSymbol}
+              onChange={(e) => setAdvSymbol(e.target.value as typeof advSymbol)}
+            >
+              <option value="BTCUSDT">BTCUSDT (NIFTY proxy)</option>
+              <option value="ETHUSDT">ETHUSDT (S&amp;P proxy)</option>
+              <option value="BNBUSDT">BNBUSDT (SENSEX proxy)</option>
+            </select>
+          </label>
+          <label className="text-sm text-white/70">
+            Interval
+            <select
+              className="mt-1 rounded-lg border border-white/10 bg-zinc-950 px-3 py-2 text-sm text-white"
+              value={advIv}
+              onChange={(e) => setAdvIv(e.target.value as typeof advIv)}
+            >
+              <option value="1m">1m</option>
+              <option value="5m">5m</option>
+              <option value="15m">15m</option>
+              <option value="1h">1h</option>
+              <option value="1d">1d</option>
+            </select>
+          </label>
+          <div className="flex items-end gap-2">
+            <span className="text-sm text-white/70">Series</span>
+            <button
+              type="button"
+              onClick={() => setAdvSeries('candlestick')}
+              className={`rounded-lg px-3 py-2 text-xs ${advSeries === 'candlestick' ? 'bg-violet-600 text-white' : 'bg-white/5 text-white/65'}`}
+            >
+              Candlestick
+            </button>
+            <button
+              type="button"
+              onClick={() => setAdvSeries('ohlc')}
+              className={`rounded-lg px-3 py-2 text-xs ${advSeries === 'ohlc' ? 'bg-violet-600 text-white' : 'bg-white/5 text-white/65'}`}
+            >
+              OHLC
+            </button>
+          </div>
+        </div>
+        <div className="mt-4 overflow-hidden rounded-xl border border-white/[0.08] bg-black/30">
+          <LazyQuantWiseCandlestickChart
+            key={`${advSymbol}-${advIv}-${advSeries}`}
+            symbol={advSymbol}
+            symbolLabel={labelForSymbol(advSymbol)}
+            interval={advIv}
+            height={350}
+            seriesType={advSeries}
+          />
+        </div>
+      </section>
+
+      <section className={card}>
         <h2 className="text-lg font-semibold text-white">Strategy performance matrix</h2>
         <div className="mt-4 flex gap-2">
           {(['nifty', 'sp500', 'side'] as const).map((t) => (
@@ -68,7 +133,7 @@ export default function OrganizationAnalyticsPage() {
           ))}
         </div>
         <div className="mt-4 overflow-x-auto">
-          <StrategyTable rows={rows as any} columns={cols} />
+          <StrategyTable rows={rows as Record<string, unknown>[]} columns={cols} />
         </div>
       </section>
 
@@ -88,7 +153,7 @@ export default function OrganizationAnalyticsPage() {
           ))}
         </div>
         <h3 className="mt-8 text-sm font-semibold text-white/80">Drawdown analysis (mock)</h3>
-        <div style={{ width: '100%', height: 260 }} className="mt-3">
+        <div style={{ width: '100%', height: 300 }} className="mt-3">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={dd} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
@@ -129,7 +194,7 @@ export default function OrganizationAnalyticsPage() {
 
       <section className={card}>
         <h2 className="text-lg font-semibold text-white">Walk-forward results (mock)</h2>
-        <div style={{ width: '100%', height: 280 }} className="mt-4">
+        <div style={{ width: '100%', height: 300 }} className="mt-4">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={wf} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />

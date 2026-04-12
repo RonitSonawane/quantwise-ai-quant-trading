@@ -1,22 +1,13 @@
-import { useMemo, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { Trophy } from 'lucide-react'
+import type { IChartApi } from 'lightweight-charts'
 import LiveIndexBanner from '../../components/landing/LiveIndexBanner'
 import WebGLGate from '../../components/layout/WebGLGate'
 import MarketGlobe3D from '../../components/3d/MarketGlobe3D'
 import { useRegime } from '../../hooks/useRegime'
-import { fetchStrategiesSeries } from '../../api/strategies'
 import ApiMockBadge from '../../components/ui/ApiMockBadge'
-import {
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-  Legend,
-  CartesianGrid,
-} from 'recharts'
+import LazyQuantWiseCandlestickChart from '../../components/charts/LazyQuantWiseCandlestickChart'
+import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend, CartesianGrid } from 'recharts'
 
 const card = 'rounded-xl border border-white/[0.08] bg-[#12121A] p-4'
 
@@ -44,40 +35,23 @@ function heatColor(v: number) {
 }
 
 export default function OrganizationDashboard() {
-  const [range, setRange] = useState<'1M' | '3M' | '6M' | '1Y' | 'All'>('All')
+  const [liveTab, setLiveTab] = useState<'nifty' | 'sp500'>('nifty')
+  const chartApiRef = useRef<IChartApi | null>(null)
   const { data: regimeData, isError: regimeErr } = useRegime()
 
-  const niftyQ = useQuery({
-    queryKey: ['org-eq', 'nifty', range],
-    queryFn: () => fetchStrategiesSeries({ asset: 'nifty', limit_points: range === '1M' ? 60 : range === '3M' ? 120 : 400 }),
-    retry: 1,
-  })
-  const spQ = useQuery({
-    queryKey: ['org-eq', 'sp500', range],
-    queryFn: () => fetchStrategiesSeries({ asset: 'sp500', limit_points: range === '1M' ? 60 : range === '3M' ? 120 : 400 }),
-    retry: 1,
-  })
+  const onChartReady = useCallback((c: IChartApi) => {
+    chartApiRef.current = c
+  }, [])
 
-  const dual = useMemo(() => {
-    const n = niftyQ.data?.data ?? []
-    const s = spQ.data?.data ?? []
-    const len = Math.min(n.length, s.length, 200)
-    const out: Array<{ x: string; nifty: number; sp500: number }> = []
-    let accN = 1e6
-    let accS = 1e6
-    for (let i = 0; i < len; i++) {
-      const rn = Number((n[i] as Record<string, unknown>)['Combined_v3'] ?? 0)
-      const rs = Number((s[i] as Record<string, unknown>)['Combined_v3'] ?? 0)
-      accN *= 1 + rn
-      accS *= 1 + rs
-      out.push({
-        x: String((n[i] as { date?: string }).date ?? i).slice(0, 10),
-        nifty: accN,
-        sp500: accS,
-      })
-    }
-    return out
-  }, [niftyQ.data, spQ.data])
+  const handleExportChart = useCallback(() => {
+    const c = chartApiRef.current
+    if (!c) return
+    const canvas = c.takeScreenshot()
+    const a = document.createElement('a')
+    a.href = canvas.toDataURL('image/png')
+    a.download = `quantwise-${liveTab}.png`
+    a.click()
+  }, [liveTab])
 
   const rollSharpe = useMemo(
     () =>
@@ -102,7 +76,7 @@ export default function OrganizationDashboard() {
           <p className="mt-1 text-sm text-white/55">Cross-index signals, leadership board, and risk posture.</p>
         </div>
         <div className="flex items-center gap-2">
-          <ApiMockBadge show={regimeErr || niftyQ.isError || spQ.isError} />
+          <ApiMockBadge show={regimeErr} />
           <WebGLGate fallback={null}>
             <MarketGlobe3D />
           </WebGLGate>
@@ -173,33 +147,41 @@ export default function OrganizationDashboard() {
 
         <div className={card}>
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-lg font-semibold text-white">Multi-index equity</h2>
-            <div className="flex flex-wrap gap-1">
-              {(['1M', '3M', '6M', '1Y', 'All'] as const).map((r) => (
-                <button
-                  key={r}
-                  type="button"
-                  onClick={() => setRange(r)}
-                  className={`rounded px-2 py-1 text-xs ${range === r ? 'bg-violet-600 text-white' : 'bg-white/5 text-white/60'}`}
-                >
-                  {r}
-                </button>
-              ))}
-            </div>
+            <h2 className="text-lg font-semibold text-white">Live index proxies</h2>
+            <button
+              type="button"
+              onClick={handleExportChart}
+              className="rounded-lg border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/80 hover:bg-white/10"
+            >
+              Export chart
+            </button>
           </div>
-          <p className="mt-1 text-xs text-white/45">Combined_v3 cumulative (normalized start)</p>
-          <div style={{ width: '100%', height: 260 }} className="mt-3">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={dual} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
-                <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
-                <XAxis dataKey="x" tick={{ fill: 'rgba(255,255,255,0.35)', fontSize: 9 }} interval={20} />
-                <YAxis tick={{ fill: 'rgba(255,255,255,0.45)', fontSize: 10 }} width={44} />
-                <Tooltip contentStyle={{ background: '#0b0b12', border: '1px solid rgba(255,255,255,0.08)' }} />
-                <Legend />
-                <Line dataKey="nifty" stroke="#22c55e" dot={false} name="NIFTY Combined_v3" />
-                <Line dataKey="sp500" stroke="#3b82f6" dot={false} name="S&P 500 Combined_v3" />
-              </LineChart>
-            </ResponsiveContainer>
+          <p className="mt-1 text-xs text-white/45">Live candlesticks (Binance proxy). Toggle index, export PNG snapshot.</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setLiveTab('nifty')}
+              className={`rounded-lg px-3 py-1.5 text-xs ${liveTab === 'nifty' ? 'bg-violet-600 text-white' : 'bg-white/5 text-white/65'}`}
+            >
+              NIFTY 50
+            </button>
+            <button
+              type="button"
+              onClick={() => setLiveTab('sp500')}
+              className={`rounded-lg px-3 py-1.5 text-xs ${liveTab === 'sp500' ? 'bg-violet-600 text-white' : 'bg-white/5 text-white/65'}`}
+            >
+              S&amp;P 500
+            </button>
+          </div>
+          <div className="mt-3 overflow-hidden rounded-xl border border-white/[0.06] bg-black/30">
+            <LazyQuantWiseCandlestickChart
+              key={liveTab}
+              symbol={liveTab === 'nifty' ? 'BTCUSDT' : 'ETHUSDT'}
+              symbolLabel={liveTab === 'nifty' ? 'NIFTY 50 (Live Demo)' : 'S&P 500 (Live Demo)'}
+              interval="5m"
+              height={350}
+              onChartReady={onChartReady}
+            />
           </div>
         </div>
 
@@ -257,7 +239,7 @@ export default function OrganizationDashboard() {
 
         <div className={card}>
           <h2 className="text-lg font-semibold text-white">Rolling 60d Sharpe (mock)</h2>
-          <div style={{ width: '100%', height: 260 }} className="mt-3">
+          <div style={{ width: '100%', height: 300 }} className="mt-3">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={rollSharpe} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
                 <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />

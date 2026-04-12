@@ -191,7 +191,7 @@ export default function ExperimentsPage() {
             {expanded === e.id ? (
               <div className="mt-4 space-y-4 border-t border-white/10 pt-4">
                 <StrategyTable title="Snapshot metrics (illustrative)" rows={mockTableRows as any} columns={buildStrategyTableColumns(mockTableRows[0])} />
-                <div style={{ width: '100%', height: 260 }}>
+                <div style={{ width: '100%', height: 300 }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                       <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />

@@ -1,7 +1,8 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Activity, BarChart3, BrainCircuit } from 'lucide-react'
 import EquityCurveChart from '../../components/charts/EquityCurveChart'
 import LiveIndexCard from '../../components/charts/LiveIndexCard'
+import LazyQuantWiseCandlestickChart from '../../components/charts/LazyQuantWiseCandlestickChart'
 import RegimeBadge from '../../components/dashboard/RegimeBadge'
 import MetricCard from '../../components/dashboard/MetricCard'
 import { CardSkeleton } from '../../components/ui/Skeleton'
@@ -17,8 +18,16 @@ function regimePanelBorder(regime: string) {
   return 'border-l-violet-500/60'
 }
 
+const liveTabs = [
+  { key: 'nifty' as const, label: 'NIFTY 50', symbol: 'BTCUSDT', symLabel: 'NIFTY 50 (Live Demo)' },
+  { key: 'sp' as const, label: 'S&P 500', symbol: 'ETHUSDT', symLabel: 'S&P 500 (Live Demo)' },
+  { key: 'sensex' as const, label: 'SENSEX', symbol: 'BNBUSDT', symLabel: 'SENSEX (Live Demo)' },
+]
+
 export default function IndividualDashboard() {
   const { data, isLoading } = useRegime()
+  const [liveTab, setLiveTab] = useState<(typeof liveTabs)[number]['key']>('nifty')
+  const [liveIv, setLiveIv] = useState<'1m' | '5m' | '15m' | '1h'>('5m')
 
   const regime = useMemo(() => {
     const d = data as { nifty?: { regime?: string }; sp500?: { regime?: string } } | undefined
@@ -40,12 +49,14 @@ export default function IndividualDashboard() {
 
   const live = useMemo(
     () => [
-      { name: 'NIFTY 50', value: 24832, changePct: 0.43, seed: 1 },
-      { name: 'SENSEX', value: 81765, changePct: 0.38, seed: 3 },
-      { name: 'S&P 500', value: 5892, changePct: 0.21, seed: 2 },
+      { name: 'NIFTY 50', value: 24832, changePct: 0.43 },
+      { name: 'SENSEX', value: 81765, changePct: 0.38 },
+      { name: 'S&P 500', value: 5892, changePct: 0.21 },
     ],
     [],
   )
+
+  const activeLive = liveTabs.find((t) => t.key === liveTab) ?? liveTabs[0]
 
   return (
     <div className="flex flex-col gap-6">
@@ -53,7 +64,7 @@ export default function IndividualDashboard() {
 
       <div className="grid w-full gap-4 md:grid-cols-3">
         {live.map((l) => (
-          <LiveIndexCard key={l.name} name={l.name} value={l.value} changePct={l.changePct} sparkSeed={l.seed} />
+          <LiveIndexCard key={l.name} name={l.name} value={l.value} changePct={l.changePct} />
         ))}
       </div>
 
@@ -85,6 +96,48 @@ export default function IndividualDashboard() {
           <div className="mt-4">
             <EquityCurveChart data={mockEquity} />
           </div>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-6 shadow-glow">
+        <div className="text-lg font-semibold text-white">Live market charts</div>
+        <p className="mt-1 text-sm text-white/55">Real-time proxy candles (Binance) mapped to each index for the demo.</p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          {liveTabs.map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => setLiveTab(t.key)}
+              className={`rounded-lg px-4 py-2 text-sm ${
+                liveTab === t.key ? 'bg-violet-600 text-white' : 'bg-white/5 text-white/70 hover:bg-white/10'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {(['1m', '5m', '15m', '1h'] as const).map((iv) => (
+            <button
+              key={iv}
+              type="button"
+              onClick={() => setLiveIv(iv)}
+              className={`rounded-lg px-3 py-1.5 text-xs ${
+                liveIv === iv ? 'bg-violet-600/90 text-white' : 'bg-white/5 text-white/60'
+              }`}
+            >
+              {iv}
+            </button>
+          ))}
+        </div>
+        <div className="mt-4 overflow-hidden rounded-xl border border-white/[0.06] bg-black/25">
+          <LazyQuantWiseCandlestickChart
+            key={`${activeLive.symbol}-${liveIv}`}
+            symbol={activeLive.symbol}
+            symbolLabel={activeLive.symLabel}
+            interval={liveIv}
+            height={350}
+          />
         </div>
       </div>
 

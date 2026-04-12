@@ -110,6 +110,12 @@ body {
   color: #e5e7eb;
 }
 
+/* Chart / UI tokens (live charts use canvas; CSS vars for consistency) */
+:root {
+  --text: #f5f5f5;
+  --bg-chart: #0d0d1f;
+}
+
 #root {
   width: 100%;
   max-width: 100%;

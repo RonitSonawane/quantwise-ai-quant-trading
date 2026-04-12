@@ -10,6 +10,8 @@ import { STRATEGIES_CATALOG } from '../../data/strategiesCatalog'
 import { addExperiment } from '../../lib/experimentsStorage'
 import type { AssetId } from '../../types'
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend, CartesianGrid } from 'recharts'
+import LazyQuantWiseCandlestickChart from '../../components/charts/LazyQuantWiseCandlestickChart'
+import { labelForSymbol } from '../../lib/indexBinanceMap'
 
 const COLORS = ['#7c3aed', '#0d9488', '#2563eb', '#9ca3af', '#f59e0b', '#ec4899', '#22c55e']
 
@@ -22,6 +24,8 @@ export default function StudentResearchLabPage() {
   const [capital, setCapital] = useState(100000)
   const [notes, setNotes] = useState('')
   const [keyFinding, setKeyFinding] = useState('')
+  const [feedSymbol, setFeedSymbol] = useState<'BTCUSDT' | 'ETHUSDT' | 'BNBUSDT'>('BTCUSDT')
+  const [feedIv, setFeedIv] = useState<'1m' | '5m' | '15m' | '1h' | '1d'>('5m')
 
   const allIds = useMemo(() => STRATEGIES_CATALOG.map((s) => s.id), [])
   const [selected, setSelected] = useState<Set<string>>(() => new Set(['Combined_v3', 'Buy_Hold', 'ML_Signal', 'Regime_Aware_v3']))
@@ -92,6 +96,44 @@ export default function StudentResearchLabPage() {
       <div>
         <h1 className="text-2xl font-semibold text-white">Research lab</h1>
         <p className="mt-1 text-sm text-white/55">Frame a hypothesis, run the pipeline, and record what you learned.</p>
+      </div>
+
+      <div className="rounded-xl border border-white/[0.08] bg-[#12121A] p-5">
+        <h2 className="text-lg font-semibold text-white">Live data feed</h2>
+        <p className="mt-1 text-sm text-white/50">Study real-time proxy candles while you design experiments.</p>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <label className="text-sm text-white/70">
+            Symbol
+            <select
+              className={`${inputCls} mt-1`}
+              value={feedSymbol}
+              onChange={(e) => setFeedSymbol(e.target.value as typeof feedSymbol)}
+            >
+              <option value="BTCUSDT">BTCUSDT (NIFTY proxy)</option>
+              <option value="ETHUSDT">ETHUSDT (S&amp;P proxy)</option>
+              <option value="BNBUSDT">BNBUSDT (SENSEX proxy)</option>
+            </select>
+          </label>
+          <label className="text-sm text-white/70">
+            Interval
+            <select className={`${inputCls} mt-1`} value={feedIv} onChange={(e) => setFeedIv(e.target.value as typeof feedIv)}>
+              <option value="1m">1m</option>
+              <option value="5m">5m</option>
+              <option value="15m">15m</option>
+              <option value="1h">1h</option>
+              <option value="1d">1d</option>
+            </select>
+          </label>
+        </div>
+        <div className="mt-4 overflow-hidden rounded-xl border border-white/[0.06] bg-black/30">
+          <LazyQuantWiseCandlestickChart
+            key={`${feedSymbol}-${feedIv}`}
+            symbol={feedSymbol}
+            symbolLabel={labelForSymbol(feedSymbol)}
+            interval={feedIv}
+            height={350}
+          />
+        </div>
       </div>
 
       <div className="flex flex-col gap-6 lg:flex-row">

@@ -3,6 +3,8 @@ import { Pie, PieChart, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, 
 import { useRegime } from '../../hooks/useRegime'
 import RegimeBadge from '../../components/dashboard/RegimeBadge'
 import { CardSkeleton } from '../../components/ui/Skeleton'
+import LazyQuantWiseCandlestickChart from '../../components/charts/LazyQuantWiseCandlestickChart'
+import { regimeAccent } from '../../lib/regimeChartStyle'
 
 type RegimeExplanation = { title: string; body: string; recommended: string }
 
@@ -188,7 +190,7 @@ export default function IndividualRegimePage() {
 
           <div className="mt-6 rounded-xl border border-[rgba(255,255,255,0.08)] bg-black/20 p-4">
             <div className="text-sm font-semibold text-white/85">HMM confidence by regime (mock)</div>
-            <div style={{ width: '100%', height: 280 }} className="mt-3">
+            <div style={{ width: '100%', height: 300 }} className="mt-3">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={probMock} layout="vertical" margin={{ top: 4, right: 16, left: 8, bottom: 4 }}>
                   <CartesianGrid stroke="rgba(255,255,255,0.06)" horizontal={false} />
@@ -209,6 +211,23 @@ export default function IndividualRegimePage() {
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="mt-6 rounded-xl border border-[rgba(255,255,255,0.08)] bg-black/20 p-4">
+            <div className="text-sm font-semibold text-white/90">Price action with regime context</div>
+            <p className="mt-1 text-xs text-white/50">
+              NIFTY 50 proxy stream with a shaded band and label for the current HMM regime (educational overlay).
+            </p>
+            <div className="mt-4 overflow-hidden rounded-xl border border-white/[0.06] bg-[#0d0d14]">
+              <LazyQuantWiseCandlestickChart
+                key={regimes.nifty}
+                symbol="BTCUSDT"
+                symbolLabel="NIFTY 50 (Live Demo)"
+                interval="5m"
+                height={350}
+                regimeBand={{ label: regimes.nifty, color: regimeAccent(regimes.nifty) }}
+              />
             </div>
           </div>
         </div>

@@ -1,6 +1,9 @@
 import { useMemo } from 'react'
 import { Crown } from 'lucide-react'
 import StrategyComparisonChart from '../../components/charts/StrategyComparisonChart'
+import LazyQuantWiseCandlestickChart from '../../components/charts/LazyQuantWiseCandlestickChart'
+import { useRegime } from '../../hooks/useRegime'
+import { regimeAccent } from '../../lib/regimeChartStyle'
 import { STRATEGY_FINAL_RS, type StrategyKey } from '../../lib/strategyEquityMock'
 
 const ANN = { Combined_v3: 39.91, ML_Signal: 36.33, Regime_Aware_v3: 34.64, Buy_Hold: 10.39 } as const
@@ -9,6 +12,15 @@ const SHARPE = { Combined_v3: 1.65, ML_Signal: 1.52, Regime_Aware_v3: 1.47, Buy_
 const keys = Object.keys(STRATEGY_FINAL_RS) as StrategyKey[]
 
 export default function IndividualStrategyPage() {
+  const { data } = useRegime()
+  const regimes = useMemo(() => {
+    const d = data as { nifty?: { regime?: string }; sp500?: { regime?: string } } | undefined
+    return {
+      nifty: String(d?.nifty?.regime ?? 'Strong Bull'),
+      sp500: String(d?.sp500?.regime ?? 'Weak Sideways'),
+    }
+  }, [data])
+
   const winners = useMemo(() => {
     const bestFinal = keys.reduce((a, b) => (STRATEGY_FINAL_RS[a] >= STRATEGY_FINAL_RS[b] ? a : b))
     const bestAnn = 'Combined_v3' as StrategyKey
@@ -23,6 +35,39 @@ export default function IndividualStrategyPage() {
         <p className="mt-1 text-sm text-white/60">
           Four equity curves with mock terminal wealth aligned to research outputs (10L base).
         </p>
+      </div>
+
+      <div className="rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-5 shadow-glow">
+        <div className="text-sm font-semibold text-white">Current market state</div>
+        <p className="mt-1 text-xs text-white/50">Live demo candles with regime badges from the ML service.</p>
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <div>
+            <div
+              className="mb-2 inline-flex rounded-full px-3 py-1 text-xs font-semibold"
+              style={{
+                backgroundColor: `${regimeAccent(regimes.nifty)}22`,
+                color: regimeAccent(regimes.nifty),
+                border: `1px solid ${regimeAccent(regimes.nifty)}55`,
+              }}
+            >
+              {regimes.nifty}
+            </div>
+            <LazyQuantWiseCandlestickChart symbol="BTCUSDT" symbolLabel="NIFTY 50 (Live Demo)" interval="5m" height={350} />
+          </div>
+          <div>
+            <div
+              className="mb-2 inline-flex rounded-full px-3 py-1 text-xs font-semibold"
+              style={{
+                backgroundColor: `${regimeAccent(regimes.sp500)}22`,
+                color: regimeAccent(regimes.sp500),
+                border: `1px solid ${regimeAccent(regimes.sp500)}55`,
+              }}
+            >
+              {regimes.sp500}
+            </div>
+            <LazyQuantWiseCandlestickChart symbol="ETHUSDT" symbolLabel="S&P 500 (Live Demo)" interval="5m" height={350} />
+          </div>
+        </div>
       </div>
 
       <StrategyComparisonChart height={300} />

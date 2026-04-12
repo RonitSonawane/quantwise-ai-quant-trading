@@ -3,6 +3,7 @@ import type { BacktestResponse } from '../../api/backtest'
 import { useBacktest } from '../../hooks/useBacktest'
 import StrategyTable from '../../components/dashboard/StrategyTable'
 import StrategyComparisonChart from '../../components/charts/StrategyComparisonChart'
+import LazyQuantWiseCandlestickChart from '../../components/charts/LazyQuantWiseCandlestickChart'
 import { buildStrategyTableColumns } from '../../lib/backtestColumns'
 
 type IndexChoice = 'NIFTY' | 'SP500' | 'BOTH'
@@ -192,6 +193,15 @@ export default function IndividualBacktestPage() {
           <div>
             <div className="mb-3 text-lg font-semibold text-white">Equity curves (mock end values)</div>
             <StrategyComparisonChart height={300} />
+          </div>
+
+          <div className="rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-6 shadow-glow">
+            <div className="text-lg font-semibold text-white">Live price reference</div>
+            <p className="mt-1 text-sm text-white/55">Side-by-side proxy feeds while you interpret historical backtest output.</p>
+            <div className="mt-4 grid gap-4 lg:grid-cols-2">
+              <LazyQuantWiseCandlestickChart symbol="BTCUSDT" symbolLabel="NIFTY 50 (Live Demo)" interval="5m" height={350} />
+              <LazyQuantWiseCandlestickChart symbol="ETHUSDT" symbolLabel="S&P 500 (Live Demo)" interval="5m" height={350} />
+            </div>
           </div>
         </div>
       ) : null}
