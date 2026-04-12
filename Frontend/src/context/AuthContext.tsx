@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- provider + hook */
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 

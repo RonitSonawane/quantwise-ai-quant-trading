@@ -1,98 +1,134 @@
 import { useMemo } from 'react'
+import { Activity, BarChart3, BrainCircuit } from 'lucide-react'
 import EquityCurveChart from '../../components/charts/EquityCurveChart'
 import LiveIndexCard from '../../components/charts/LiveIndexCard'
 import RegimeBadge from '../../components/dashboard/RegimeBadge'
 import MetricCard from '../../components/dashboard/MetricCard'
+import { CardSkeleton } from '../../components/ui/Skeleton'
 import { useRegime } from '../../hooks/useRegime'
 
-const mockEquity = Array.from({ length: 30 }).map((_, i) => {
-  const x = i === 0 ? 'D-29' : `D-${29 - i}`
-  const value = 100000 * (1 + (i / 29) * 0.15)
-  return { x, value }
-})
+function regimePanelBorder(regime: string) {
+  const l = regime.toLowerCase()
+  if (l.includes('strong') && l.includes('bull')) return 'border-l-emerald-500'
+  if (l.includes('strong') && l.includes('bear')) return 'border-l-red-500'
+  if (l.includes('weak') && l.includes('sideways')) return 'border-l-yellow-400'
+  if (l.includes('bull')) return 'border-l-emerald-400/80'
+  if (l.includes('bear')) return 'border-l-red-400/80'
+  return 'border-l-violet-500/60'
+}
 
 export default function IndividualDashboard() {
   const { data, isLoading } = useRegime()
 
   const regime = useMemo(() => {
-    // Expected backend shape when calling GET /regime without `asset`
-    const d = data as any
-    const niftyReg = d?.nifty?.regime ?? 'Strong Bull'
+    const d = data as { nifty?: { regime?: string }; sp500?: { regime?: string } } | undefined
     return {
-      nifty: String(niftyReg),
+      nifty: String(d?.nifty?.regime ?? 'Strong Bull'),
       sp500: String(d?.sp500?.regime ?? 'Weak Sideways'),
     }
   }, [data])
 
+  const mockEquity = useMemo(
+    () =>
+      Array.from({ length: 31 }).map((_, i) => {
+        const d = new Date(2025, 0, 1 + i)
+        const value = 100000 + (15000 * i) / 30
+        return { date: d.toISOString().slice(0, 10), value }
+      }),
+    [],
+  )
+
   const live = useMemo(
     () => [
-      { name: 'NIFTY 50', value: 24832, changePct: 0.43 },
-      { name: 'SENSEX', value: 81765, changePct: 0.38 },
-      { name: 'S&P 500', value: 5892, changePct: 0.21 },
+      { name: 'NIFTY 50', value: 24832, changePct: 0.43, seed: 1 },
+      { name: 'SENSEX', value: 81765, changePct: 0.38, seed: 3 },
+      { name: 'S&P 500', value: 5892, changePct: 0.21, seed: 2 },
     ],
     [],
   )
 
   return (
-    <div className="mx-auto max-w-7xl">
-      <div className="grid gap-4 md:grid-cols-3">
+    <div className="flex flex-col gap-6">
+      <h1 className="text-2xl font-semibold text-white">Dashboard</h1>
+
+      <div className="grid w-full gap-4 md:grid-cols-3">
         {live.map((l) => (
-          <LiveIndexCard key={l.name} name={l.name} value={l.value} changePct={l.changePct} />
+          <LiveIndexCard key={l.name} name={l.name} value={l.value} changePct={l.changePct} sparkSeed={l.seed} />
         ))}
       </div>
 
-      <div className="mt-5 grid gap-4 md:grid-cols-2">
-        <div className="rounded-3xl border border-white/10 bg-white/5 p-4 shadow-glow">
-          <div className="text-sm font-semibold text-white/80">Current Regime</div>
-          <div className="mt-3 flex flex-wrap items-center gap-3">
-            <RegimeBadge regime={regime.nifty} />
-            <div className="text-xs text-white/50">{isLoading ? 'Fetching…' : 'NIFTY 50'}</div>
-          </div>
-          <div className="mt-3 flex flex-wrap items-center gap-3">
-            <RegimeBadge regime={regime.sp500} />
-            <div className="text-xs text-white/50">{isLoading ? 'Fetching…' : 'S&P 500'}</div>
-          </div>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div
+          className={`rounded-xl border border-[rgba(255,255,255,0.08)] border-l-4 bg-[rgba(255,255,255,0.03)] p-6 shadow-glow ${regimePanelBorder(regime.nifty)}`}
+        >
+          <div className="text-lg font-semibold text-white">Current regime</div>
+          <p className="mt-1 text-sm text-white/55">Live HMM label (updates with the ML service).</p>
+          {isLoading ? (
+            <CardSkeleton />
+          ) : (
+            <div className="mt-6 space-y-6">
+              <div className="flex flex-wrap items-center gap-4">
+                <RegimeBadge regime={regime.nifty} pulse />
+                <span className="text-sm text-white/50">NIFTY 50</span>
+              </div>
+              <div className="flex flex-wrap items-center gap-4">
+                <RegimeBadge regime={regime.sp500} />
+                <span className="text-sm text-white/50">S&amp;P 500</span>
+              </div>
+            </div>
+          )}
         </div>
 
-        <div className="rounded-3xl border border-white/10 bg-white/5 p-4 shadow-glow">
-          <div className="text-sm font-semibold text-white/80">Mini Equity Curve (Mock)</div>
-          <div className="mt-3">
+        <div className="rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-6 shadow-glow">
+          <div className="text-lg font-semibold text-white">Portfolio equity</div>
+          <p className="mt-1 text-sm text-white/55">Mock curve from Rs 1,00,000 → Rs 1,15,000.</p>
+          <div className="mt-4">
             <EquityCurveChart data={mockEquity} />
           </div>
         </div>
       </div>
 
-      <div className="mt-5 grid gap-4 md:grid-cols-4">
-        <MetricCard label="Portfolio Value" value="Rs 1,15,000" sub="Initial Rs 1,00,000" />
-        <MetricCard label="Total Return" value="+15.00%" sub="Last 30 days (mock)" />
-        <MetricCard label="Sharpe Ratio" value="1.42" sub="Risk-adjusted (mock)" />
-        <MetricCard label="Max Drawdown" value="-4.8%" sub="Worst dip (mock)" />
+      <div className="grid gap-4 md:grid-cols-4">
+        <MetricCard label="Portfolio value" value="Rs 1,15,000" sub="Initial Rs 1,00,000" trend="up" />
+        <MetricCard label="Total return" value="+15.00%" sub="Last 30 days (mock)" trend="up" />
+        <MetricCard label="Sharpe ratio" value="1.42" sub="Risk-adjusted (mock)" trend="up" />
+        <MetricCard label="Max drawdown" value="-4.8%" sub="Worst dip (mock)" trend="down" />
       </div>
 
-      <div className="mt-5 grid gap-4 lg:grid-cols-3">
-        <div className="rounded-3xl border border-white/10 bg-white/5 p-4 shadow-glow lg:col-span-2">
-          <div className="text-sm font-semibold text-white/80">Recent Activity</div>
-          <ul className="mt-3 space-y-2 text-sm text-white/70">
-            <li className="rounded-xl border border-white/10 bg-black/10 px-3 py-2">
-              Backtest run: <span className="font-semibold text-white/90">Combined_v3</span> • NIFTY 50
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-6 shadow-glow lg:col-span-2">
+          <div className="text-lg font-semibold text-white">Recent activity</div>
+          <ul className="mt-4 space-y-3">
+            <li className="flex items-start gap-3 rounded-xl border border-[rgba(255,255,255,0.06)] bg-black/20 px-4 py-3">
+              <BarChart3 className="mt-0.5 size-5 shrink-0 text-violet-400" />
+              <div className="min-w-0 flex-1 text-sm text-white/75">
+                Backtest run: <span className="font-semibold text-white">Combined_v3</span> • NIFTY 50
+              </div>
+              <span className="shrink-0 text-xs text-white/40">2h ago</span>
             </li>
-            <li className="rounded-xl border border-white/10 bg-black/10 px-3 py-2">
-              Regime update detected: <span className="font-semibold text-white/90">{regime.nifty}</span>
+            <li className="flex items-start gap-3 rounded-xl border border-[rgba(255,255,255,0.06)] bg-black/20 px-4 py-3">
+              <BrainCircuit className="mt-0.5 size-5 shrink-0 text-emerald-400" />
+              <div className="min-w-0 flex-1 text-sm text-white/75">
+                Regime update: <span className="font-semibold text-white">{regime.nifty}</span>
+              </div>
+              <span className="shrink-0 text-xs text-white/40">Today</span>
             </li>
-            <li className="rounded-xl border border-white/10 bg-black/10 px-3 py-2">
-              ML signal recomputed • Ensemble accuracy (mock): 66%
+            <li className="flex items-start gap-3 rounded-xl border border-[rgba(255,255,255,0.06)] bg-black/20 px-4 py-3">
+              <Activity className="mt-0.5 size-5 shrink-0 text-sky-400" />
+              <div className="min-w-0 flex-1 text-sm text-white/75">ML ensemble recomputed • test accuracy ~66% (mock)</div>
+              <span className="shrink-0 text-xs text-white/40">Yesterday</span>
             </li>
           </ul>
         </div>
-        <div className="rounded-3xl border border-white/10 bg-white/5 p-4 shadow-glow">
-          <div className="text-sm font-semibold text-white/80">Next Actions</div>
-          <div className="mt-3 text-sm text-white/60">
-            Use <span className="text-white/80">Backtest</span> to run the full pipeline, or <span className="text-white/80">Simulation</span> to
-            project growth for a chosen strategy.
-          </div>
+        <div className="rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-6 shadow-glow">
+          <div className="text-lg font-semibold text-white">Next actions</div>
+          <p className="mt-3 text-sm leading-relaxed text-white/60">
+            Run a full <span className="text-white/85">Backtest</span> for the pipeline, open{' '}
+            <span className="text-white/85">Simulation</span> for growth projection, or review{' '}
+            <span className="text-white/85">Strategies</span> for curve comparison.
+          </p>
         </div>
       </div>
     </div>
   )
 }
-

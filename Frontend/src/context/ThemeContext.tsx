@@ -1,10 +1,11 @@
+/* eslint-disable react-refresh/only-export-components -- provider + hook */
 import { createContext, useContext, useMemo, type ReactNode } from 'react'
 
 const ThemeContext = createContext<{ theme: 'dark'; setTheme: (t: 'dark') => void } | null>(null)
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   // We keep the app permanently on the QuantWise dark theme for now.
-  const value = useMemo(() => ({ theme: 'dark' as const, setTheme: (_t: 'dark') => {} }), [])
+  const value = useMemo(() => ({ theme: 'dark' as const, setTheme: () => {} }), [])
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
 }
 

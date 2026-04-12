@@ -12,6 +12,12 @@ function parseSortable(v: unknown): number {
   return Number.NaN
 }
 
+function rowHighlightClass(strategyName: string, extra?: Record<string, string>) {
+  if (strategyName === 'Combined_v3') return 'bg-purple-500/20'
+  if (strategyName === 'Buy_Hold') return 'bg-zinc-600/25'
+  return extra?.[strategyName] ?? ''
+}
+
 export default function StrategyTable({
   title,
   rows,
@@ -31,6 +37,11 @@ export default function StrategyTable({
   const sorted = useMemo(() => {
     const list = [...rows]
     list.sort((a, b) => {
+      if (sortKey === rowKey) {
+        const as = String(a[sortKey] ?? '')
+        const bs = String(b[sortKey] ?? '')
+        return dir === 'asc' ? as.localeCompare(bs) : bs.localeCompare(as)
+      }
       const av = parseSortable(a[sortKey])
       const bv = parseSortable(b[sortKey])
       if (!Number.isFinite(av) && !Number.isFinite(bv)) return 0
@@ -39,13 +50,13 @@ export default function StrategyTable({
       return dir === 'asc' ? av - bv : bv - av
     })
     return list
-  }, [dir, rows, sortKey])
+  }, [dir, rows, sortKey, rowKey])
 
   return (
-    <div className="rounded-3xl border border-white/10 bg-white/5 p-4 shadow-glow">
-      {title ? <div className="text-sm font-semibold text-white/80">{title}</div> : null}
+    <div className="rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-4 shadow-glow">
+      {title ? <div className="text-lg font-semibold text-white/90">{title}</div> : null}
       <div className="mt-3 overflow-x-auto">
-        <table className="min-w-[900px] border-separate border-spacing-0 text-sm">
+        <table className="min-w-[1100px] border-separate border-spacing-0 text-sm">
           <thead>
             <tr>
               {columns.map((c) => (
@@ -56,7 +67,7 @@ export default function StrategyTable({
                     if (sortKey === c.key) setDir((d) => (d === 'asc' ? 'desc' : 'asc'))
                     else {
                       setSortKey(c.key)
-                      setDir('desc')
+                      setDir(c.key === rowKey ? 'asc' : 'desc')
                     }
                   }}
                 >
@@ -71,12 +82,12 @@ export default function StrategyTable({
           <tbody>
             {sorted.map((r, idx) => {
               const sName = String((r[rowKey] as unknown) ?? '')
-              const highlight = highlightByStrategy?.[sName]
+              const hl = rowHighlightClass(sName, highlightByStrategy)
               return (
-                <tr key={`${sName}-${idx}`} className={highlight ? highlight : 'hover:bg-white/5'}>
+                <tr key={`${sName}-${idx}`} className={`${hl} hover:bg-white/5`}>
                   {columns.map((c) => (
-                    <td key={`${sName}-${c.key}`} className="border-b border-white/5 px-3 py-2 text-white/80">
-                      {r[c.key] as any}
+                    <td key={`${sName}-${c.key}`} className="border-b border-white/5 px-3 py-2 text-white/85">
+                      {String(r[c.key] ?? '')}
                     </td>
                   ))}
                 </tr>
@@ -88,4 +99,3 @@ export default function StrategyTable({
     </div>
   )
 }
-
