@@ -59,7 +59,7 @@ export default function IndividualPortfolioPage() {
 
           <div className="rounded-xl border border-[rgba(255,255,255,0.08)] bg-black/20 p-4 lg:col-span-2">
             <div className="text-lg font-semibold text-white/85">Performance (mock)</div>
-            <div style={{ width: '100%', height: 300 }} className="mt-3">
+            <div style={{ width: '100%', height: 300, minWidth: 0, minHeight: 0 }} className="mt-3">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={equity} margin={{ top: 8, right: 12, left: 4, bottom: 4 }}>
                   <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />

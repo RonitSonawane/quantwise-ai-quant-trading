@@ -109,9 +109,9 @@ export default function StudentResearchLabPage() {
               value={feedSymbol}
               onChange={(e) => setFeedSymbol(e.target.value as typeof feedSymbol)}
             >
-              <option value="BTCUSDT">BTCUSDT (NIFTY proxy)</option>
-              <option value="ETHUSDT">ETHUSDT (S&amp;P proxy)</option>
-              <option value="BNBUSDT">BNBUSDT (SENSEX proxy)</option>
+              <option value="BTCUSDT">NIFTY 50</option>
+              <option value="ETHUSDT">S&amp;P 500</option>
+              <option value="BNBUSDT">SENSEX</option>
             </select>
           </label>
           <label className="text-sm text-white/70">
@@ -246,7 +246,7 @@ export default function StudentResearchLabPage() {
                   {strategiesQ.isLoading ? (
                     <div className="mt-3 h-[280px] animate-pulse rounded-lg bg-white/5" />
                   ) : (
-                    <div style={{ width: '100%', height: 300 }} className="mt-3">
+                    <div style={{ width: '100%', height: 300, minWidth: 0, minHeight: 0 }} className="mt-3">
                       <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={chartRows} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                           <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />

@@ -65,7 +65,7 @@ export default function IndexChartModal({ open, indexId, onClose }: Props) {
         left: 0,
         width: '100vw',
         height: '100vh',
-        background: 'rgba(0,0,0,0.92)',
+        background: 'rgba(0,0,0,0.9)',
         zIndex: 9999,
         display: 'flex',
         alignItems: 'center',

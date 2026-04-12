@@ -192,10 +192,10 @@ export default function QuantWiseCandlestickChart({
         }
 
         ws.onerror = () => {
-          if (!isDisposed && !disposedRef.current) setStatus('delayed')
+          if (!isDisposed) setStatus('delayed')
         }
         ws.onclose = () => {
-          if (isDisposed || disposedRef.current) return
+          if (isDisposed) return
           reconnectRef.current = setTimeout(connectWebSocket, 5000)
         }
       } catch {
@@ -216,8 +216,8 @@ export default function QuantWiseCandlestickChart({
       const ws = wsRef.current
       if (ws) {
         ws.onmessage = null
-        ws.onerror = null
         ws.onclose = null
+        ws.onerror = null
         try {
           ws.close()
         } catch {

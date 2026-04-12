@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { FlaskConical, Microscope, BookOpen, Library } from 'lucide-react'
+import LiveIndexCard from '../../components/charts/LiveIndexCard'
 
 const card = 'rounded-xl border border-white/[0.08] bg-[#12121A] p-4 shadow-sm'
 
@@ -70,6 +71,12 @@ export default function StudentDashboard() {
       <div>
         <h1 className="text-2xl font-semibold text-white">Student dashboard</h1>
         <p className="mt-1 text-sm text-white/55">Track learning progress and recent research runs.</p>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <LiveIndexCard name="NIFTY 50" value={24832} changePct={0.43} />
+        <LiveIndexCard name="S&P 500" value={5892} changePct={0.21} />
+        <LiveIndexCard name="SENSEX" value={81765} changePct={0.38} />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

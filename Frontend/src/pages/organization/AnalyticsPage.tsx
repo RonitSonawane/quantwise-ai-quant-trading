@@ -69,9 +69,9 @@ export default function OrganizationAnalyticsPage() {
               value={advSymbol}
               onChange={(e) => setAdvSymbol(e.target.value as typeof advSymbol)}
             >
-              <option value="BTCUSDT">BTCUSDT (NIFTY proxy)</option>
-              <option value="ETHUSDT">ETHUSDT (S&amp;P proxy)</option>
-              <option value="BNBUSDT">BNBUSDT (SENSEX proxy)</option>
+              <option value="BTCUSDT">NIFTY 50</option>
+              <option value="ETHUSDT">S&amp;P 500</option>
+              <option value="BNBUSDT">SENSEX</option>
             </select>
           </label>
           <label className="text-sm text-white/70">
@@ -194,7 +194,7 @@ export default function OrganizationAnalyticsPage() {
 
       <section className={card}>
         <h2 className="text-lg font-semibold text-white">Walk-forward results (mock)</h2>
-        <div style={{ width: '100%', height: 300 }} className="mt-4">
+        <div style={{ width: '100%', height: 300, minWidth: 0, minHeight: 0 }} className="mt-4">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={wf} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />

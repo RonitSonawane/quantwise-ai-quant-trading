@@ -77,7 +77,7 @@ export default function StudentLearnPage() {
             subtitle="Rules, data, and models instead of gut feel alone."
             body="Quantitative trading uses historical data, statistics, and algorithms to decide when to be in or out of the market. Instead of one-off stories, you test ideas across many years to see if an edge is consistent or just luck."
             chart={
-              <div style={{ width: '100%', height: 300 }}>
+              <div style={{ width: '100%', height: 300, minWidth: 0, minHeight: 0 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={[{ x: 'Rules', v: 72 }, { x: 'Data', v: 88 }, { x: 'Risk', v: 64 }]}>
                     <XAxis dataKey="x" tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 11 }} />
@@ -232,7 +232,7 @@ export default function StudentLearnPage() {
             subtitle="Train on the past, test on unseen future segments."
             body="Instead of fitting once on all history, walk-forward retrains on a rolling window and evaluates on the next chunk. If performance collapses out-of-sample, the edge was likely overfit."
             chart={
-              <div style={{ width: '100%', height: 300 }}>
+              <div style={{ width: '100%', height: 300, minWidth: 0, minHeight: 0 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={[{ x: 'In-sample', v: 22 }, { x: 'Out-of-sample', v: 14 }]}>
                     <XAxis dataKey="x" tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 11 }} />

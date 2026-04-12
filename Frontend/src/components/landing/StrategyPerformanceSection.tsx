@@ -24,7 +24,7 @@ export default function StrategyPerformanceSection() {
         transition={{ duration: 0.4 }}
         className="mt-6"
       >
-        <div style={{ width: '100%', height: 300 }}>
+        <div style={{ width: '100%', height: 300, minWidth: 0, minHeight: 0 }}>
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={data} margin={{ top: 8, right: 12, left: 4, bottom: 0 }}>
               <XAxis dataKey="date" tick={{ fill: 'rgba(255,255,255,0.45)', fontSize: 11 }} />

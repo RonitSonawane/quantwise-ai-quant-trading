@@ -143,7 +143,7 @@ export default function IndividualRegimePage() {
           <div className="mt-6 grid gap-6 md:grid-cols-2">
             <div className="rounded-xl border border-[rgba(255,255,255,0.08)] bg-black/20 p-4">
               <div className="text-sm font-semibold text-white/85">Regime history (mock)</div>
-              <div style={{ width: '100%', height: 300 }} className="mt-3">
+              <div style={{ width: '100%', height: 300, minWidth: 0, minHeight: 0 }} className="mt-3">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={regimeHistory} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
                     <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
@@ -173,7 +173,7 @@ export default function IndividualRegimePage() {
             </div>
             <div className="rounded-xl border border-[rgba(255,255,255,0.08)] bg-black/20 p-4">
               <div className="text-sm font-semibold text-white/85">Regime distribution</div>
-              <div style={{ width: '100%', height: 300 }}>
+              <div style={{ width: '100%', height: 300, minWidth: 0, minHeight: 0 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie data={pieData} dataKey="value" innerRadius={40} outerRadius={72} paddingAngle={2}>
@@ -190,7 +190,7 @@ export default function IndividualRegimePage() {
 
           <div className="mt-6 rounded-xl border border-[rgba(255,255,255,0.08)] bg-black/20 p-4">
             <div className="text-sm font-semibold text-white/85">HMM confidence by regime (mock)</div>
-            <div style={{ width: '100%', height: 300 }} className="mt-3">
+            <div style={{ width: '100%', height: 300, minWidth: 0, minHeight: 0 }} className="mt-3">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={probMock} layout="vertical" margin={{ top: 4, right: 16, left: 8, bottom: 4 }}>
                   <CartesianGrid stroke="rgba(255,255,255,0.06)" horizontal={false} />
