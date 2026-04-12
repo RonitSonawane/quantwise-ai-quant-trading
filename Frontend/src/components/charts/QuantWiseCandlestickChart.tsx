@@ -28,6 +28,8 @@ type Props = {
   onChartReady?: (chart: IChartApi) => void
   /** Optional regime label overlay (educational). */
   regimeBand?: { label: string; color: string }
+  /** When true, chart fills parent flex area and resizes with container (e.g. fullscreen modal). */
+  fillParent?: boolean
 }
 
 export type QuantWiseCandlestickChartProps = Props
@@ -50,6 +52,7 @@ export default function QuantWiseCandlestickChart({
   seriesMode = 'candlestick',
   onChartReady,
   regimeBand,
+  fillParent = false,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
@@ -72,7 +75,11 @@ export default function QuantWiseCandlestickChart({
     disposedRef.current = false
     if (!containerRef.current) return
 
-    const chart = createChart(containerRef.current, {
+    const el = containerRef.current
+    const initialW = el.clientWidth
+    const initialH = fillParent ? Math.max(el.clientHeight, 200) : height
+
+    const chart = createChart(el, {
       layout: {
         background: { type: ColorType.Solid, color: '#0D0D1F' },
         textColor: '#C4C4C4',
@@ -88,8 +95,8 @@ export default function QuantWiseCandlestickChart({
         timeVisible: true,
         secondsVisible: false,
       },
-      width: containerRef.current.clientWidth,
-      height,
+      width: initialW,
+      height: initialH,
     })
 
     chartRef.current = chart
@@ -116,12 +123,24 @@ export default function QuantWiseCandlestickChart({
     const handleResize = () => {
       if (isDisposed || disposedRef.current) return
       if (containerRef.current && chartRef.current) {
-        chartRef.current.applyOptions({
-          width: containerRef.current.clientWidth,
-        })
+        const w = containerRef.current.clientWidth
+        if (fillParent) {
+          const h = Math.max(containerRef.current.clientHeight, 120)
+          chartRef.current.applyOptions({ width: w, height: h })
+        } else {
+          chartRef.current.applyOptions({ width: w })
+        }
       }
     }
     window.addEventListener('resize', handleResize)
+
+    let ro: ResizeObserver | undefined
+    if (fillParent && typeof ResizeObserver !== 'undefined' && containerRef.current) {
+      ro = new ResizeObserver(() => handleResize())
+      ro.observe(containerRef.current)
+    }
+
+    queueMicrotask(() => handleResize())
 
     const fetchData = async () => {
       try {
@@ -213,6 +232,7 @@ export default function QuantWiseCandlestickChart({
         reconnectRef.current = null
       }
       window.removeEventListener('resize', handleResize)
+      ro?.disconnect()
       const ws = wsRef.current
       if (ws) {
         ws.onmessage = null
@@ -236,10 +256,20 @@ export default function QuantWiseCandlestickChart({
         }
       }
     }
-  }, [binanceSymbol, interval, height, mode])
+  }, [binanceSymbol, interval, height, mode, fillParent])
 
   return (
-    <div style={{ position: 'relative', width: '100%' }}>
+    <div
+      style={{
+        position: 'relative',
+        width: '100%',
+        height: fillParent ? '100%' : undefined,
+        minHeight: fillParent ? 0 : undefined,
+        display: fillParent ? 'flex' : undefined,
+        flexDirection: fillParent ? 'column' : undefined,
+        overflow: fillParent ? 'visible' : undefined,
+      }}
+    >
       {showToolbar ? (
         <div
           style={{
@@ -249,6 +279,7 @@ export default function QuantWiseCandlestickChart({
             padding: '8px 12px',
             background: '#12121A',
             borderBottom: '1px solid rgba(255,255,255,0.08)',
+            flexShrink: 0,
           }}
         >
           <span style={{ color: '#fff', fontSize: '14px', fontWeight: 500 }}>{symbolLabel}</span>
@@ -324,7 +355,17 @@ export default function QuantWiseCandlestickChart({
         </div>
       ) : null}
 
-      <div ref={containerRef} style={{ width: '100%', height: `${height}px` }} />
+      <div
+        ref={containerRef}
+        style={{
+          width: '100%',
+          height: fillParent ? '100%' : `${height}px`,
+          minHeight: fillParent ? 120 : undefined,
+          flex: fillParent ? 1 : undefined,
+          minWidth: 0,
+          overflow: 'visible',
+        }}
+      />
 
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }

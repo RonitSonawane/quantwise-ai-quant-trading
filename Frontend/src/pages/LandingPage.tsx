@@ -62,8 +62,13 @@ export default function LandingPage() {
           transition={{ duration: 0.55, delay: 0.08 }}
           className="mt-10 w-full max-w-xl flex-1 lg:mt-0 lg:max-w-none"
         >
-          <div className="overflow-hidden rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] shadow-glow">
-            <Hero3D hidden={chartModalOpen} />
+          <div className="overflow-visible rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] shadow-glow">
+            <div
+              className="flex w-full min-h-[400px] items-center justify-center overflow-visible"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Hero3D hidden={chartModalOpen} />
+            </div>
           </div>
         </motion.div>
       </section>
