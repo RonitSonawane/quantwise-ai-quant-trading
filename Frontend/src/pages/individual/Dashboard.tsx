@@ -1,4 +1,7 @@
 import { useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
+import { getLiveSignal } from '../../api/paperTrading'
 import { Activity, BarChart3, BrainCircuit } from 'lucide-react'
 import EquityCurveChart from '../../components/charts/EquityCurveChart'
 import LiveIndexCard from '../../components/charts/LiveIndexCard'
@@ -23,6 +26,39 @@ const liveTabs = [
   { key: 'sp' as const, label: 'S&P 500', symbol: 'ETHUSDT', symLabel: 'S&P 500 (Live Demo)' },
   { key: 'sensex' as const, label: 'SENSEX', symbol: 'BNBUSDT', symLabel: 'SENSEX (Live Demo)' },
 ]
+
+function TodaySignalPreview() {
+  const { data, isLoading } = useQuery({
+    queryKey: ['live-signal-nifty'],
+    queryFn: () => getLiveSignal('NIFTY50'),
+    refetchInterval: 300000
+  })
+
+  if (isLoading) return <CardSkeleton />
+  if (!data) return <div className="text-sm text-white/50">Failed to load signal</div>
+
+  return (
+    <div className="flex items-center gap-8 rounded-xl bg-black/20 p-5 border border-[rgba(255,255,255,0.05)]">
+      <div className="flex flex-col">
+        <span className="text-sm text-white/50">Index</span>
+        <span className="font-bold text-white">NIFTY 50</span>
+      </div>
+      <div className="flex flex-col">
+        <span className="text-sm text-white/50">Direction</span>
+        <span className={`font-bold ${data.direction === 'BUY' ? 'text-green-500' : data.direction === 'REDUCE' ? 'text-red-500' : 'text-yellow-500'}`}>{data.direction}</span>
+      </div>
+      <div className="flex flex-col">
+        <span className="text-sm text-white/50">Confidence</span>
+        <span className="font-bold text-white">{data.combined_score}%</span>
+      </div>
+      <div className="flex flex-col">
+        <span className="text-sm text-white/50">Risk Level</span>
+        <span className={`font-bold ${data.risk_level === 'LOW' ? 'text-green-500' : data.risk_level === 'MEDIUM' ? 'text-yellow-500' : 'text-red-500'}`}>{data.risk_level}</span>
+      </div>
+    </div>
+  )
+}
+
 
 export default function IndividualDashboard() {
   const { data, isLoading } = useRegime()
@@ -97,6 +133,19 @@ export default function IndividualDashboard() {
             <EquityCurveChart data={mockEquity} />
           </div>
         </div>
+      </div>
+
+      <div className="rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-6 shadow-glow">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <div className="text-lg font-semibold text-white">Today's Trading Signal</div>
+            <p className="mt-1 text-sm text-white/55">Live signal preview for NIFTY 50 from Paper Trading Engine.</p>
+          </div>
+          <Link to="/individual/paper-trading" className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-violet-700">
+            View Full Signal
+          </Link>
+        </div>
+        <TodaySignalPreview />
       </div>
 
       <div className="rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-6 shadow-glow">

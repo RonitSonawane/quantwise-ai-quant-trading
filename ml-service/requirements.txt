@@ -7,4 +7,5 @@ ta
 hmmlearn
 scikit-learn
 statsmodels
-
+pymongo[srv]
+apscheduler

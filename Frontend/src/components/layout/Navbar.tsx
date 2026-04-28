@@ -50,6 +50,7 @@ export default function Navbar() {
       { to: '/individual/regime', label: 'Regime' },
       { to: '/individual/strategy', label: 'Strategies' },
       { to: '/individual/simulation', label: 'Simulation' },
+      { to: '/individual/paper-trading', label: 'Paper Trading' },
     ]
   }, [token, userType])
 

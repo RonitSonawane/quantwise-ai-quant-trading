@@ -136,7 +136,7 @@ app.add_middleware(
         "http://localhost:3000",
     ],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["*"],
     max_age=3600,
@@ -284,3 +284,69 @@ def post_simulate(req: SimulateRequest) -> Dict[str, Any]:
 def get_health() -> Dict[str, Any]:
     return {"ready": STATE.ready}
 
+from database import test_connection
+from live_data import get_live_price, get_all_live_prices
+from signal_engine import generate_live_signal
+from paper_trade_engine import (
+    open_trade, close_trade,
+    get_open_positions, get_trade_history
+)
+from trade_metrics import calculate_metrics
+from pydantic import BaseModel
+from typing import Optional
+
+class OpenTradeRequest(BaseModel):
+    index_name: str
+    strategy:   str
+    trade_type: str
+    capital:    float
+    user_id:    Optional[str] = "default"
+
+class CloseTradeRequest(BaseModel):
+    trade_id: str
+
+@app.get("/live-prices")
+async def get_live_prices():
+    return get_all_live_prices()
+
+@app.get("/live-price/{index_name}")
+async def get_index_price(index_name: str):
+    return get_live_price(index_name)
+
+@app.get("/live-signal/{index_name}")
+async def get_live_signal(index_name: str):
+    return generate_live_signal(index_name)
+
+@app.get("/live-signal")
+async def get_all_signals():
+    nifty = generate_live_signal("NIFTY50")
+    sp500 = generate_live_signal("SP500")
+    return {"NIFTY50": nifty, "SP500": sp500}
+
+@app.post("/paper-trade/open")
+async def open_paper_trade(req: OpenTradeRequest):
+    signal = generate_live_signal(req.index_name)
+    return open_trade(req.index_name, req.strategy,
+                      req.trade_type, req.capital,
+                      signal, req.user_id)
+
+@app.post("/paper-trade/close")
+async def close_paper_trade(req: CloseTradeRequest):
+    return close_trade(req.trade_id)
+
+@app.get("/paper-trade/positions")
+async def get_positions(user_id: str = "default"):
+    return get_open_positions(user_id)
+
+@app.get("/paper-trade/history")
+async def get_history(user_id: str = "default"):
+    return get_trade_history(user_id)
+
+@app.get("/paper-trade/metrics")
+async def get_metrics(user_id: str = "default"):
+    return calculate_metrics(user_id)
+
+@app.get("/db-health")
+async def db_health():
+    ok = test_connection()
+    return {"mongodb": "connected" if ok else "failed"}

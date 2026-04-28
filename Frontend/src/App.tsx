@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
+import { Toaster } from 'react-hot-toast'
 import Layout from './components/layout/Layout'
 import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/auth/LoginPage'
@@ -13,6 +14,9 @@ import IndividualStrategyPage from './pages/individual/StrategyPage'
 import IndividualPortfolioPage from './pages/individual/PortfolioPage'
 import IndividualHistoryPage from './pages/individual/HistoryPage'
 import IndividualProfilePage from './pages/individual/ProfilePage'
+import IndividualPaperTradingPage from './pages/individual/PaperTradingPage'
+import IndividualPaperTradingHistory from './pages/individual/PaperTradingHistory'
+import IndividualPaperTradingAnalytics from './pages/individual/PaperTradingAnalytics'
 import StudentDashboard from './pages/student/Dashboard'
 import StudentLearnPage from './pages/student/LearnPage'
 import StudentResearchLabPage from './pages/student/ResearchLabPage'
@@ -30,6 +34,13 @@ import RequireAuth from './components/ui/RequireAuth'
 export default function App() {
   return (
     <Layout>
+      <Toaster position="top-right" toastOptions={{
+        style: {
+          background: '#12121A',
+          color: '#fff',
+          border: '1px solid rgba(255,255,255,0.1)'
+        }
+      }} />
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
@@ -48,6 +59,9 @@ export default function App() {
                 <Route path="portfolio" element={<IndividualPortfolioPage />} />
                 <Route path="history" element={<IndividualHistoryPage />} />
                 <Route path="profile" element={<IndividualProfilePage />} />
+                <Route path="paper-trading" element={<IndividualPaperTradingPage />} />
+                <Route path="paper-trading/history" element={<IndividualPaperTradingHistory />} />
+                <Route path="paper-trading/analytics" element={<IndividualPaperTradingAnalytics />} />
                 <Route path="*" element={<Navigate to="dashboard" replace />} />
               </Routes>
             </RequireAuth>
