@@ -15,46 +15,47 @@
 
 ## 📑 Table of Contents
 - [Overview](#-overview)
-- [Live Demo](#-live-demo)
-- [Features](#-features)
-- [Architecture](#-architecture)
+- [Target Use Cases](#-target-use-cases)
+- [Features & System Highlights](#-features--system-highlights)
+- [System Architecture](#-system-architecture)
+- [Deep Dive: Core ML Pipeline](#-deep-dive-core-ml-pipeline)
+  - [Phase 1: Advanced Feature Engineering](#phase-1-advanced-feature-engineering)
+  - [Phase 2: 6-State HMM Regime Detection](#phase-2-6-state-hmm-regime-detection)
+  - [Phase 3: ML Ensemble & Adaptive Alpha](#phase-3-ml-ensemble--adaptive-alpha)
+- [15 Quantitative Trading Strategies](#-15-quantitative-trading-strategies)
+- [Paper Trading Engine](#-paper-trading-engine)
+- [Backtest Results & Key Insights](#-backtest-results--key-insights)
 - [Tech Stack](#-tech-stack)
-- [Core ML System](#-core-ml-system)
-  - [Phase 1: Feature Engineering](#phase-1---feature-engineering)
-  - [Phase 2: 6-State HMM Regime Detection](#phase-2---6-state-hmm-regime-detection)
-  - [Phase 3: ML Ensemble Signal](#phase-3---ml-ensemble-signal)
-- [Backtest Results](#-backtest-results)
-- [15 Trading Strategies](#-15-trading-strategies)
-- [Paper Trading System](#-paper-trading-system)
-- [Frontend Pages](#-frontend-pages)
 - [API Endpoints](#-api-endpoints)
-- [How to Run](#-how-to-run)
-- [Environment Variables](#-environment-variables)
+- [Frontend Portal Breakdown](#-frontend-portal-breakdown)
+- [How to Run (Local Setup)](#-how-to-run-local-setup)
 - [Project Structure](#-project-structure)
-- [Screenshots](#-screenshots)
 - [Roadmap](#-roadmap)
-- [Academic Info](#-academic-info)
-- [License](#-license)
+- [Academic Context & License](#-academic-context--license)
 
 ---
 
 ## 📖 Overview
-**QuantWise** is an end-to-end quantitative trading research and paper trading platform that combines advanced machine learning with classical quantitative finance theory to generate alpha-beating investment signals on the **NIFTY 50** and **S&P 500** indices.
+**QuantWise** is an end-to-end quantitative trading research and paper trading platform that merges advanced machine learning methodologies with classical quantitative finance theory. Designed to generate alpha-beating investment signals on major indices like the **NIFTY 50** and **S&P 500**, QuantWise provides an institutional-grade infrastructure accessible to everyday traders, students, and research organizations.
 
-Built for individual investors, students/researchers, and hedge funds, QuantWise provides real-time market data, AI-driven regime detection, complex multi-strategy backtesting, and live paper trading environments.
+By analyzing decades of historical data, detecting hidden market regimes, and applying a robust ensemble of machine learning models, QuantWise removes emotion from trading and relies entirely on data-driven statistical edges.
 
-## 🚀 Live Demo
-**Coming Soon**
+## 🎯 Target Use Cases
+QuantWise is designed with three specific user personas in mind, providing tailored dashboards for each:
 
-## ✨ Features
-- **Real-Time Data**: Live market data feed via Yahoo Finance and Binance WebSocket API.
-- **Advanced Machine Learning**: 3-phase ML pipeline with 59 engineered features, Gaussian HMM regime detection, and ML ensemble models.
-- **15 Trading Strategies**: From classic moving average crossovers to multi-timeframe momentum and volatility-adjusted trend systems.
-- **Paper Trading Engine**: Realistic paper trading simulator with intraday/delivery options, brokerage cost simulation, and detailed performance analytics.
-- **Stunning UI/UX**: React 18 application with Tailwind CSS, Framer Motion animations, and 3D visualizations.
-- **Comprehensive Analytics**: Deep dive into cumulative P&L, strategy win rates, confidence calibration, and regime-based performance.
+1. **Individual Investors**: Want to trade but lack the time to build their own algorithms. They use the platform to receive daily live signals, check the current market regime, and automatically paper trade the high-confidence signals.
+2. **Students & Quantitative Researchers**: Want to learn how HMMs and Machine Learning apply to finance. They use the platform's "Learn" modules, run isolated sandbox experiments on the ML pipeline, and study the mathematical breakdown of the strategies.
+3. **Organizations & Hedge Funds**: Need high-level analytics and raw data access. They use the platform to monitor executive summary dashboards, run bulk-strategy backtests across multiple assets simultaneously, analyze Value-at-Risk (VaR), and interact programmatically via the API.
 
-## 🏛 Architecture
+## ✨ Features & System Highlights
+- **Real-Time Data Integration**: Ingests live market data feed via Yahoo Finance (`yfinance`) and real-time tick data using the Binance WebSocket API.
+- **Data-Driven Strategy Allocation**: The system never guesses which strategy to use; it mathematically maps the highest Sharpe Ratio strategy to the current active market regime.
+- **Zero Look-Ahead Bias**: The backtesting engine enforces a strict chronological 80/20 train/test split. All rolling windows, regime detections, and ML predictions are strictly out-of-sample.
+- **Smart Data Imputation**: Instead of dropping valuable rows containing NaN values (common in multi-timeframe feature engineering), the system utilizes a cascading fill strategy to preserve 100% of historical market days.
+- **Realistic Paper Trading**: Simulates actual trading conditions including Rs20 flat brokerage, 0.1% STT, and slippage assumptions. It automatically sets dynamic Stop Losses and Take Profits based on the Average True Range (ATR).
+- **Stunning UI/UX**: Built with React 18 and Tailwind CSS, featuring rich interactive candlestick charts (TradingView Lightweight Charts), 3D visual elements (Three.js), and fluid layout transitions (Framer Motion).
+
+## 🏛 System Architecture
 
 ```mermaid
 graph TD
@@ -64,7 +65,7 @@ graph TD
     D --> E[Adaptive Alpha Combination<br>Signal + Regime]
     
     E --> F{Strategy Selection}
-    F --> G[15 Trading Strategies]
+    F --> G[15 Quantitative Strategies]
     
     G --> H[Backtest Engine]
     G --> I[Paper Trading Engine]
@@ -72,10 +73,92 @@ graph TD
     H --> J[Trade Metrics & Analytics]
     I --> J
     
-    J --> K[(MongoDB Atlas<br>Database)]
-    K --> L[FastAPI Backend]
-    L --> M[React TypeScript Frontend]
+    J --> K[(MongoDB Atlas)]
+    K <--> L[FastAPI Backend]
+    L <--> M[React TypeScript Frontend]
 ```
+
+## 🧠 Deep Dive: Core ML Pipeline
+The intelligence of QuantWise is broken down into a 3-Phase Machine Learning Pipeline. Here is exactly how it works under the hood.
+
+### Phase 1: Advanced Feature Engineering
+Raw OHLCV (Open, High, Low, Close, Volume) data isn't enough for machine learning. The system transforms the raw price data into **59 distinct statistical features**:
+- **Volatility Metrics**: Rolling standard deviations (10, 20, 50-day), Average True Range (ATR), and Bollinger Band widths.
+- **Momentum Indicators**: Relative Strength Index (RSI), MACD, Stochastic Oscillators, and Rate of Change (ROC).
+- **Trend Variables**: Simple/Exponential Moving Averages (SMA/EMA) at multiple depths (10, 20, 50, 100, 200).
+- **Risk Metrics**: Rolling max drawdowns and rolling beta.
+- **Multi-Timeframe Returns**: Calculates exact percentage returns over 1-month, 3-month, 6-month, and 12-month periods to capture structural momentum.
+- **Statistical Positioning**: Z-Scores of price relative to historical moving averages.
+
+### Phase 2: 6-State HMM Regime Detection
+The market behaves differently during a crash than it does during a euphoric bull run. A strategy that works in one will fail in the other. 
+
+QuantWise uses a **Gaussian Hidden Markov Model (HMM)** to identify the *hidden state* of the market. It classifies the market into 6 statistically distinct regimes:
+1. 🟢 **Strong Bull**: High average returns, very low volatility.
+2. 🫒 **Weak Bull**: Moderate returns, medium volatility.
+3. 🟡 **Strong Sideways**: Near-zero return, tightly range-bound low volatility.
+4. 🟠 **Weak Sideways**: Near-zero return, choppy high volatility.
+5. 🔴 **Weak Bear**: Small negative returns, medium volatility.
+6. 🩸 **Strong Bear**: Large negative returns, violent high volatility.
+
+**How it works:**
+- The HMM model is trained over 2,000 iterations to find the optimal transition matrix.
+- We apply a "regime smoothing" algorithm that requires a minimum 10-day streak to officially declare a regime change, preventing whiplash on volatile days.
+- **Confidence Weighting**: Instead of just outputting the single most likely regime, we use `predict_proba()` to get the probability distribution across all 6 states. The daily return calculation is a weighted sum based on this distribution.
+
+### Phase 3: ML Ensemble & Adaptive Alpha
+With the features built and the regime identified, we predict the next day's movement.
+
+- **The Ensemble**: We use a composite of three different algorithms to prevent overfitting:
+  1. *Logistic Regression (C=0.1)*: Captures linear relationships and baseline trends.
+  2. *Random Forest (100 trees, depth 5)*: Captures complex, non-linear interactions between features without memorizing the noise.
+  3. *Gradient Boosting (100 trees, depth 3, lr=0.05)*: Iteratively corrects the errors of previous models.
+- **The Signal**: The final prediction is the average probability across all three models. Position sizing is calculated continuously: `(Probability - 0.45) / 0.10`, clipped between 0 and 1.
+- **Adaptive Alpha**: The system blends the pure ML signal with the HMM Regime signal using an `Alpha` variable. The Alpha scales dynamically based on the ML model's trailing 30-day accuracy. If the ML model hits 70% accuracy, Alpha shifts to 0.7 (trusting the ML more). If accuracy drops to 50%, Alpha shifts to 0.0 (falling back entirely to the structural HMM regime).
+
+## 📈 15 Quantitative Trading Strategies
+QuantWise backtests and tracks 15 distinct strategies simultaneously.
+
+### The Phase 1 High-Alpha Strategies (New & Advanced)
+These are the core proprietary algorithms designed to beat the market:
+1. **Dual_Momentum**: Requires absolute momentum (12-month asset return > risk-free rate) AND a trend filter (Current Price > 200 SMA). Rebalances monthly.
+2. **MTM (Multi-Timeframe Momentum)**: An AQR-style composite that weights 1-month (20%), 3-month (30%), 6-month (30%), and 12-month (20%) returns to generate a continuous strength score for position sizing.
+3. **ZScore_MeanRev**: Statistically grounded mean reversion. Triggers an entry only when the price drops 2 standard deviations below its 20-day mean, and exits exactly when the z-score returns to 0.
+4. **VATR (Volatility-Adjusted Trend)**: Uses an EMA crossover for direction, but scales the position size inversely to the ATR. High volatility = smaller position; Low volatility = larger position.
+
+### The Original Baselines
+For benchmark comparison, the system also tracks: `Buy_Hold`, `SMA_Crossover`, `EMA_Crossover`, `RSI_Mean_Rev`, `MACD_Trend`, `Breakout`, `Vol_Breakout`, `Bollinger_Bands`, `Momentum`, `Defensive_Cash`, and `Risk_Parity`.
+
+## 💸 Paper Trading Engine
+The Paper Trading system takes the theory and applies it to real live markets without risking actual capital.
+
+**How it works:**
+- Real-time data is fetched via the `yfinance` API for NIFTY 50 and S&P 500.
+- Every 15 minutes, the system recalculates the 59 features, updates the current HMM Regime, and runs the ML Ensemble to generate a new live signal.
+- **Confidence Scoring**: Each signal receives a confidence score derived from 40% HMM confidence and 60% ML probability distance from 0.5. 
+  - Risk Levels are assigned: `LOW RISK` (>65% confidence), `MEDIUM RISK` (50-65%), `HIGH RISK` (<50%).
+- **Execution Engine**: Users can execute Intraday or Delivery trades. The engine dynamically sets a Stop Loss at `Entry Price - (2 * Current ATR)` and a Take Profit at `Entry Price + (3 * Current ATR)`.
+- **Accounting**: All trades are recorded in MongoDB Atlas, tracking gross PnL, simulated brokerage costs, and net PnL to provide a highly accurate reflection of real-world trading.
+
+## 📊 Backtest Results & Key Insights
+
+The system was rigorously backtested on historical data. **The results prove the efficacy of the Adaptive Alpha model.**
+
+### NIFTY 50 (2007 - 2025)
+| Strategy | Annualized Return | Sharpe Ratio | Note |
+| :--- | :--- | :--- | :--- |
+| **Combined_v3 (Best)** | **39.91%** | **0.910** | Dynamically shifts between ML and Regimes |
+| ML_Signal | 36.33% | 0.880 | Pure machine learning probability |
+| Regime_Aware_v3 | 34.64% | 0.850 | Pure structural HMM strategy mapping |
+| Buy & Hold (Benchmark) | 10.39% | 0.345 | The standard index baseline |
+
+**Key Insight:** While the pure ML signal performed excellently, the `Combined_v3` adaptive model outperformed it by actively dialing down the ML's influence during periods of poor 30-day rolling accuracy, relying instead on the structural safety of the HMM Regimes. 
+
+### S&P 500 (2000 - 2025)
+| Strategy | Annualized Return | Sharpe Ratio | Note |
+| :--- | :--- | :--- | :--- |
+| **Combined_v3 (Best)** | **~35.00%** | **-** | Consistently avoids major dot-com/2008 crashes |
+| Buy & Hold (Benchmark) | 6.15% | 0.153 | Suffered massive historical drawdowns |
 
 ## 💻 Tech Stack
 
@@ -83,175 +166,109 @@ graph TD
 | :--- | :--- |
 | **Frontend** | React 18, TypeScript, Tailwind CSS, Framer Motion, Three.js, Recharts, Lightweight Charts (TradingView), React Query, Shadcn/ui, Lucide React |
 | **Backend** | Python, FastAPI, Uvicorn |
-| **Database** | MongoDB Atlas (Cloud), SQLite (Local Fallback) |
+| **Database** | MongoDB Atlas (Cloud), SQLite (Local Fallback for isolated testing) |
 | **ML/AI** | scikit-learn, hmmlearn, numpy, pandas, statsmodels, ta (technical analysis) |
 | **Data Sources** | yfinance (Yahoo Finance), Binance WebSocket API |
-| **Charting** | Lightweight Charts by TradingView |
-
-## 🧠 Core ML System
-The system utilizes a sophisticated 3-phase machine learning pipeline to generate trading signals and optimize strategy selection.
-
-### Phase 1 - Feature Engineering
-- Downloads OHLCV data from Yahoo Finance.
-- Engineers **59 technical features** per index including returns, volatility (10/20/50 day), trend indicators, momentum, risk, Bollinger Bands, multi-timeframe returns, and volume features.
-- Employs a smart NaN filling strategy without dropping rows to recover all available historical data.
-
-### Phase 2 - 6-State HMM Regime Detection
-Trains a Gaussian Hidden Markov Model independently per index to classify the market into 6 states:
-1. **Strong Bull** (High return, low volatility)
-2. **Weak Bull** (Moderate return, medium volatility)
-3. **Strong Sideways** (Near-zero return, low volatility)
-4. **Weak Sideways** (Near-zero return, high volatility)
-5. **Weak Bear** (Small negative return, medium volatility)
-6. **Strong Bear** (Large negative return, high volatility)
-
-Features:
-- Regime smoothing with a minimum 10-day streak requirement.
-- Data-driven strategy selection: For each regime, the system finds which strategy achieves the highest Sharpe ratio on *only* that regime's days.
-- **HMM Confidence Weighting**: Uses `predict_proba()`. Daily returns are a weighted sum across all 6 states based on regime probability.
-
-### Phase 3 - ML Ensemble Signal
-- Target: Predict if the next day's return > 0.
-- 3 models in ensemble: Logistic Regression, Random Forest, Gradient Boosting.
-- Final signal is the average probability of all 3 models.
-- **Adaptive Alpha Combination**: Dynamically scales the weight of the ML signal vs. Regime-Aware strategy based on a 30-day rolling ML accuracy metric.
-
-## 📊 Backtest Results
-
-### NIFTY 50 (2007-2025)
-| Strategy | Annualized Return | Sharpe Ratio |
-| :--- | :--- | :--- |
-| **Combined_v3 (Best)** | **39.91%** | **0.91** |
-| ML_Signal | 36.33% | 0.88 |
-| Regime_Aware_v3 | 34.64% | 0.85 |
-| Buy & Hold (Benchmark) | 10.39% | 0.345 |
-
-*ML Model Accuracy: 54.2%*
-
-### S&P 500 (2000-2025)
-| Strategy | Annualized Return | Sharpe Ratio |
-| :--- | :--- | :--- |
-| **Combined_v3 (Best)** | **~35.00%** | **-** |
-| Buy & Hold (Benchmark) | 6.15% | 0.153 |
-
-*ML Model Accuracy: 53.3%*
-
-## 📈 15 Trading Strategies
-
-| Strategy Category | Strategies Included |
-| :--- | :--- |
-| **Original Baseline (10)** | `Buy_Hold`, `SMA_Crossover`, `EMA_Crossover`, `RSI_Mean_Rev`, `MACD_Trend`, `Breakout`, `Vol_Breakout`, `Bollinger_Bands`, `Momentum`, `Defensive_Cash`, `Risk_Parity` |
-| **Phase 1 High-Alpha (4)** | `Dual_Momentum` (Trend filter + absolute momentum), `MTM` (Multi-Timeframe composite), `ZScore_MeanRev` (Statistically grounded mean reversion), `VATR` (Volatility-Adjusted Trend) |
-
-## 💸 Paper Trading System
-- Live market data via `yfinance` (15-min delayed).
-- Real-time regime detection and signal generation on live data.
-- **Confidence Scores**: HMM confidence + ML confidence weighted together.
-- Risk Levels: LOW (>65%), MEDIUM (>50%), HIGH (<50%).
-- Trade Types: Intraday and Delivery.
-- Simulated Costs: Brokerage Rs20 + STT 0.1%.
-- Risk Management: Stop loss at `entry - 2x ATR`, target at `entry + 3x ATR`.
-- MongoDB Atlas integration for persistent trade tracking.
-
-## 🖥 Frontend Pages
-
-| User Type | Available Pages |
-| :--- | :--- |
-| **Individual Investor** | Dashboard, Backtest, Regime Analysis, Strategy Comparison, Simulation, Paper Trading, Trading History, Analytics |
-| **Student / Researcher** | Dashboard, Interactive Learn (HMM/Strategies), Research Lab, Saved Experiments, Strategy Library |
-| **Organization / Hedge Fund** | Executive Dashboard, Analytics, API Access, Bulk Backtesting, Risk Report, Team Management, Export Results |
 
 ## 🔌 API Endpoints
+The FastAPI backend acts as a headless algorithmic engine.
 
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
-| GET | `/` | Service info |
-| GET | `/health`, `/db-health` | Health checks and MongoDB status |
-| POST | `/backtest` | Run full ML pipeline backtest |
-| GET | `/regime` | Get current market regime |
-| GET | `/strategies` | Get all strategy returns |
-| POST | `/simulate` | Investment growth simulator |
-| GET | `/live-prices`, `/live-price/{index}` | Live index prices |
-| GET | `/live-signal`, `/live-signal/{index}` | Live signals with confidence scores |
-| POST | `/paper-trade/open`, `/close` | Open/Close paper trades |
-| GET | `/paper-trade/positions`, `/history`, `/metrics` | Paper trading analytics and history |
+| **System** | `/health`, `/db-health` | Health checks and MongoDB connection status |
+| **Research** | `/backtest` | Run the full ML pipeline backtest over historical data |
+| **Research** | `/simulate` | Investment compound growth simulator |
+| **Market** | `/regime` | Calculate the current exact market regime |
+| **Market** | `/strategies` | Get annualized returns for all 15 strategies |
+| **Market** | `/live-prices` | Fetch current prices for configured indices |
+| **Signals** | `/live-signal/{index}` | Generate a live trading signal with confidence scores |
+| **Paper Trade**| `/paper-trade/open` | Open a new simulated trade |
+| **Paper Trade**| `/paper-trade/close` | Close an active simulated trade |
+| **Analytics** | `/paper-trade/metrics`| Retrieve aggregated win-rates, profit factors, etc. |
 
-## 🛠 How to Run
+## 🖥 Frontend Portal Breakdown
+The UI adapts dynamically based on the selected user persona.
 
-### Backend (ml-service)
+| User Type | Features & Views |
+| :--- | :--- |
+| **Individual Investor** | **Dashboard**: Live prices, active regime, and portfolio equity.<br>**Paper Trading**: Live signal generation, trade execution, history tables, and deep analytics (win rate by strategy/regime).<br>**Backtest**: Strategy comparison and equity curve visualizations. |
+| **Student / Researcher** | **Interactive Learning**: Visual breakdowns of how HMMs classify data.<br>**Research Lab**: A sandbox to tweak parameters (like Alpha values) and see live results.<br>**Experiment History**: Save and review past algorithmic experiments. |
+| **Org / Hedge Fund** | **Executive Summary**: High-level PnL and active exposure.<br>**Risk Reports**: Value-at-Risk (VaR) and drawdown analysis.<br>**Bulk Processing**: Run backtests across all strategies at once.<br>**API Hub**: Generate API keys and view integration code snippets. |
+
+## 🛠 How to Run (Local Setup)
+
+### 1. Backend (Python / FastAPI)
+Ensure you have Python 3.10+ installed.
 ```bash
+# Navigate to backend directory
 cd ml-service
+
+# Install required ML and API libraries
 pip install -r requirements.txt
+
+# Create .env file and add your MongoDB Atlas string
+echo "MONGO_URI=mongodb+srv://<user>:<password>@cluster.mongodb.net/" > .env
+
+# Run the Uvicorn ASGI server
 python -m uvicorn main:app --reload
 ```
-API runs at `http://127.0.0.1:8000` | Docs at `http://127.0.0.1:8000/docs`
+*The API will run at `http://127.0.0.1:8000`. Swagger documentation is auto-generated at `/docs`.*
 
-### Frontend (React)
+### 2. Frontend (React / Vite)
+Ensure you have Node.js 18+ installed.
 ```bash
+# Navigate to frontend directory
 cd Frontend
+
+# Install node modules
 npm install
+
+# Create .env file to point to local backend
+echo "VITE_API_URL=http://127.0.0.1:8000" > .env
+
+# Start the Vite development server
 npm run dev
 ```
-App runs at `http://localhost:5173`
-
-## ⚙️ Environment Variables
-
-Create a `.env` file in the **Frontend** directory:
-```env
-VITE_API_URL=http://127.0.0.1:8000
-```
-
-Create a `.env` file in the **ml-service** directory:
-```env
-MONGO_URI=your_mongodb_connection_string
-```
+*The web app will run at `http://localhost:5173`.*
 
 ## 📁 Project Structure
 
 ```text
 quantwise/
-├── Frontend/                 # React TypeScript app
+├── Frontend/                 # React 18 TypeScript application
 │   ├── src/
-│   │   ├── components/       # Reusable UI components (charts, landing, layout)
-│   │   ├── pages/            # Individual, Student, and Organization routes
-│   │   ├── api/              # Axios API calls
-│   │   ├── hooks/            # React Query hooks
-│   │   ├── context/          # Context API (Auth)
-│   │   └── types/            # TypeScript interfaces
-│   ├── package.json
-│   └── vite.config.ts
-├── ml-service/               # Python FastAPI backend
-│   ├── main.py               # FastAPI app + endpoints
-│   ├── config.py             # Shared constants
-│   ├── data_engineering.py   # 59 feature engineering
-│   ├── hmm_engine.py         # 6-state HMM regime detection
-│   ├── ml_model.py           # ML ensemble model
-│   ├── strategies.py         # 15 trading strategies
-│   ├── backtest_engine.py    # Simulator + metrics
-│   ├── live_data.py          # yfinance live data
-│   ├── signal_engine.py      # Live signal generation
-│   ├── paper_trade_engine.py # Paper trading logic
-│   ├── trade_metrics.py      # Performance metrics
-│   ├── database.py           # MongoDB connection
+│   │   ├── components/       # Charts, 3D elements, layout, UI primitives
+│   │   ├── pages/            # View logic separated by User Persona
+│   │   ├── api/              # Axios configuration and API wrappers
+│   │   ├── hooks/            # React Query data fetching hooks
+│   │   └── types/            # Strict TypeScript interface definitions
+│   └── package.json
+├── ml-service/               # Python FastAPI core engine
+│   ├── main.py               # API router and server entry
+│   ├── data_engineering.py   # Mathematical generation of 59 features
+│   ├── hmm_engine.py         # The Gaussian Hidden Markov Model logic
+│   ├── ml_model.py           # The Sklearn Ensemble (RF, LR, GB)
+│   ├── strategies.py         # Logic for the 15 trading algorithms
+│   ├── backtest_engine.py    # Historical simulation and Sharpe calculations
+│   ├── signal_engine.py      # Real-time inference pipeline
+│   ├── paper_trade_engine.py # Execution simulator and PnL accounting
+│   ├── database.py           # MongoDB connection pooling
 │   └── requirements.txt
-├── Backend/                  # Reserved for future use
-├── Docs/                     # Documentation
+├── Docs/                     # Additional project documentation
 └── README.md
 ```
 
-## 📸 Screenshots
-*(Coming Soon - Placeholders for application screenshots)*
-
 ## 🗺 Roadmap
-- [ ] Implement multi-asset portfolio optimization (Markowitz).
-- [ ] Add deep learning models (LSTM / Transformers) to the ensemble.
-- [ ] Introduce options trading capabilities in the paper trading simulator.
-- [ ] Implement user authentication and JWT authorization.
+- [ ] **Multi-Asset Portfolio Optimization**: Implement Markowitz Efficient Frontier to dynamically balance NIFTY and S&P 500 weights.
+- [ ] **Deep Learning Integration**: Introduce LSTM or Transformer models into the Phase 3 ensemble to capture sequential time-series patterns.
+- [ ] **Options Trading Simulator**: Expand the paper trading engine to support Call/Put options, factoring in Greeks (Delta, Theta) for realistic pricing.
+- [ ] **JWT Authentication**: Add robust user login and authorization to isolate paper trading portfolios per user.
 
-## 🎓 Academic Context
-This is a Major Project for B.E. Computer Engineering at the **Sardar Patel Institute of Technology (SPIT)**, Mumbai.
+## 🎓 Academic Context & License
+This is a Major Project designed and implemented for the **B.E. Computer Engineering** degree at the **Sardar Patel Institute of Technology (SPIT)**, Mumbai.
+
 - **Academic Year**: 2025-2026
-- **Student**: Ronit Sonawane
+- **Student Architect**: Ronit Sonawane
 
-## 📄 License
-This project is licensed under the [MIT License](https://opensource.org/licenses/MIT).
+---
+**License**: This software is provided under the [MIT License](https://opensource.org/licenses/MIT). Feel free to fork, modify, and use for your own quantitative research.
