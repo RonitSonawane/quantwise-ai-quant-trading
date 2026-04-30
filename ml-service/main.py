@@ -39,6 +39,8 @@ class SimulateRequest(BaseModel):
     strategy: str = Field(description="Strategy column name (e.g. Buy_Hold, Combined_v3).")
     initial_capital: float = Field(default=float(INITIAL_CAPITAL), gt=0)
     limit_points: int = Field(default=800, ge=10, le=5000)
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
 
 
 class QuantWiseState:
@@ -190,17 +192,35 @@ def _startup() -> None:
 @app.post("/backtest")
 def post_backtest(req: BacktestRequest) -> Dict[str, Any]:
     if (not STATE.ready) or req.refresh_data:
-        STATE.build(req.start_date, req.end_date, req.initial_capital)
+        STATE.build("2000-01-01", "2026-01-01", req.initial_capital)
+
+    nifty_strat = STATE.strat_returns["nifty"].copy()
+    sp500_strat = STATE.strat_returns["sp500"].copy()
+
+    if req.start_date:
+        nifty_strat = nifty_strat.loc[nifty_strat.index >= pd.to_datetime(req.start_date)]
+        sp500_strat = sp500_strat.loc[sp500_strat.index >= pd.to_datetime(req.start_date)]
+    if req.end_date:
+        nifty_strat = nifty_strat.loc[nifty_strat.index <= pd.to_datetime(req.end_date)]
+        sp500_strat = sp500_strat.loc[sp500_strat.index <= pd.to_datetime(req.end_date)]
+
+    nifty_bt = backtest_all(nifty_strat, "NIFTY 50", req.initial_capital)
+    sp500_bt = backtest_all(sp500_strat, "S&P 500", req.initial_capital)
 
     return {
-        "meta": STATE.meta,
+        "meta": {
+            **STATE.meta,
+            "start_date": req.start_date,
+            "end_date": req.end_date,
+            "initial_capital": req.initial_capital,
+        },
         "backtests": {
-            "nifty": STATE.backtests["nifty"].reset_index().to_dict(orient="records"),
-            "sp500": STATE.backtests["sp500"].reset_index().to_dict(orient="records"),
+            "nifty": nifty_bt.reset_index().to_dict(orient="records"),
+            "sp500": sp500_bt.reset_index().to_dict(orient="records"),
         },
         "strategies": {
-            "nifty": list(STATE.strat_returns["nifty"].columns),
-            "sp500": list(STATE.strat_returns["sp500"].columns),
+            "nifty": list(nifty_strat.columns),
+            "sp500": list(sp500_strat.columns),
         },
     }
 
@@ -266,14 +286,22 @@ def post_simulate(req: SimulateRequest) -> Dict[str, Any]:
             detail=f"Unknown strategy '{req.strategy}'. Available: {list(df.columns)}",
         )
 
-    series = df[req.strategy]
+    series = df[req.strategy].copy()
+    if req.start_date:
+        series = series.loc[series.index >= pd.to_datetime(req.start_date)]
+    if req.end_date:
+        series = series.loc[series.index <= pd.to_datetime(req.end_date)]
+
     result = simulate_investment(req.initial_capital, series)
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
 
     eq: pd.Series = result["equity_curve"]
     if len(eq) > req.limit_points:
-        eq = eq.iloc[-req.limit_points:]
+        # Instead of just taking the last N points which messes up the start date, 
+        # let's downsample or just take uniformly spaced points to preserve the shape.
+        idx = np.round(np.linspace(0, len(eq) - 1, req.limit_points)).astype(int)
+        eq = eq.iloc[idx]
 
     result_out = dict(result)
     result_out["equity_curve"] = [{"date": i.date().isoformat(), "value": float(v)} for i, v in eq.items()]
@@ -301,6 +329,7 @@ class OpenTradeRequest(BaseModel):
     trade_type: str
     capital:    float
     user_id:    Optional[str] = "default"
+    position_type: Optional[str] = "LONG"
 
 class CloseTradeRequest(BaseModel):
     trade_id: str
@@ -323,12 +352,34 @@ async def get_all_signals():
     sp500 = generate_live_signal("SP500")
     return {"NIFTY50": nifty, "SP500": sp500}
 
+@app.get("/chart-data/{index_name}")
+async def get_chart_data(index_name: str, period: str = "5d", interval: str = "5m"):
+    from live_data import get_historical_data
+    df = get_historical_data(index_name, period=period, interval=interval)
+    data = []
+    if not df.empty:
+        for idx, row in df.iterrows():
+            # Yfinance returns timezone aware index sometimes, convert to UTC timestamp
+            try:
+                ts = int(idx.timestamp())
+            except:
+                import time
+                ts = int(time.mktime(idx.timetuple()))
+            data.append({
+                "time": ts,
+                "open": float(row["Open"]),
+                "high": float(row["High"]),
+                "low": float(row["Low"]),
+                "close": float(row["Close"]),
+            })
+    return data
+
 @app.post("/paper-trade/open")
 async def open_paper_trade(req: OpenTradeRequest):
     signal = generate_live_signal(req.index_name)
     return open_trade(req.index_name, req.strategy,
                       req.trade_type, req.capital,
-                      signal, req.user_id)
+                      signal, req.user_id, req.position_type)
 
 @app.post("/paper-trade/close")
 async def close_paper_trade(req: CloseTradeRequest):

@@ -30,6 +30,8 @@ type Props = {
   regimeBand?: { label: string; color: string }
   /** When true, chart fills parent flex area and resizes with container (e.g. fullscreen modal). */
   fillParent?: boolean
+  /** Data source to use. Defaults to binance. */
+  dataSource?: 'binance' | 'yfinance'
 }
 
 export type QuantWiseCandlestickChartProps = Props
@@ -53,6 +55,7 @@ export default function QuantWiseCandlestickChart({
   onChartReady,
   regimeBand,
   fillParent = false,
+  dataSource = 'binance',
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
@@ -149,14 +152,30 @@ export default function QuantWiseCandlestickChart({
         const startDate = new Date()
         startDate.setHours(endDate.getHours() - 24)
 
-        const bars = await simpleBinanceRestClient.getCandles(
-          binanceSymbol,
-          interval,
-          startDate,
-          endDate,
-          300,
-          'com',
-        )
+        let bars: any[] = [];
+        if (dataSource === 'binance') {
+          bars = await simpleBinanceRestClient.getCandles(
+            binanceSymbol,
+            interval,
+            startDate,
+            endDate,
+            300,
+            'com',
+          )
+        } else {
+          // Fetch from our FastAPI backend
+          const res = await fetch(`http://localhost:8000/chart-data/${symbol}?period=5d&interval=${interval}`);
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+             bars = data.map((d: any) => ({
+               date: d.time,
+               open: d.open,
+               high: d.high,
+               low: d.low,
+               close: d.close
+             }));
+          }
+        }
 
         if (isDisposed || disposedRef.current) return
 
@@ -187,6 +206,40 @@ export default function QuantWiseCandlestickChart({
 
     const connectWebSocket = () => {
       if (isDisposed || disposedRef.current) return
+      
+      if (dataSource === 'yfinance') {
+        // Poll for live price every 5 seconds since yfinance doesn't have websockets
+        const pollInterval = setInterval(async () => {
+          if (isDisposed || disposedRef.current) {
+            clearInterval(pollInterval);
+            return;
+          }
+          try {
+            const res = await fetch(`http://localhost:8000/live-price/${symbol}`);
+            const data = await res.json();
+            if (data && data.price && seriesRef.current) {
+              const ts = Math.floor(new Date(data.time).getTime() / 1000) as UTCTimestamp;
+              const bar = {
+                time: ts,
+                open: data.open || data.price,
+                high: data.high || data.price,
+                low: data.low || data.price,
+                close: data.price
+              };
+              // lightweight-charts needs strictly increasing time. 
+              // We just update the last candle or append if it's a new minute.
+              seriesRef.current.update(bar);
+              setLastPrice(data.price);
+            }
+          } catch (e) {
+            console.error("Polling error", e);
+          }
+        }, 5000);
+        
+        reconnectRef.current = pollInterval as any;
+        return;
+      }
+
       try {
         const ws = new WebSocket(
           `wss://stream.binance.com:9443/ws/${binanceSymbol.toLowerCase()}@kline_${interval}`,
@@ -228,7 +281,11 @@ export default function QuantWiseCandlestickChart({
       isDisposed = true
       disposedRef.current = true
       if (reconnectRef.current) {
-        clearTimeout(reconnectRef.current)
+        if (dataSource === 'yfinance') {
+          clearInterval(reconnectRef.current as any)
+        } else {
+          clearTimeout(reconnectRef.current as any)
+        }
         reconnectRef.current = null
       }
       window.removeEventListener('resize', handleResize)
@@ -298,17 +355,19 @@ export default function QuantWiseCandlestickChart({
             >
               {status === 'live' ? 'LIVE' : status === 'loading' ? 'LOADING...' : status === 'delayed' ? 'DELAYED' : 'DEMO DATA'}
             </span>
-            <span
-              style={{
-                fontSize: '10px',
-                padding: '2px 8px',
-                borderRadius: '4px',
-                background: '#1a1a3a',
-                color: '#7C3AED',
-              }}
-            >
-              BINANCE PROXY
-            </span>
+            {dataSource === 'binance' && (
+              <span
+                style={{
+                  fontSize: '10px',
+                  padding: '2px 8px',
+                  borderRadius: '4px',
+                  background: '#1a1a3a',
+                  color: '#7C3AED',
+                }}
+              >
+                BINANCE PROXY
+              </span>
+            )}
           </div>
         </div>
       ) : null}

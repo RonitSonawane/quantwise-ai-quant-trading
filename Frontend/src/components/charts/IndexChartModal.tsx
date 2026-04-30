@@ -30,20 +30,8 @@ export default function IndexChartModal({ open, indexId, onClose }: Props) {
 
   useEffect(() => {
     if (!open || !indexId) return
-    const m = indexToBinance(indexId)
-    let cancelled = false
-    void (async () => {
-      try {
-        const r = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${m.symbol}`)
-        const j = (await r.json()) as { price?: string }
-        if (!cancelled && j.price) setPrice(Number(j.price).toLocaleString(undefined, { maximumFractionDigits: 2 }))
-      } catch {
-        if (!cancelled) setPrice(null)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
+    // With yfinance, we don't need a secondary binance API call.
+    setPrice('Live')
   }, [open, indexId])
 
   if (!mapped) return null
@@ -88,10 +76,10 @@ export default function IndexChartModal({ open, indexId, onClose }: Props) {
                 <p className="mt-0.5 text-xs text-white/50">
                   {price != null ? (
                     <>
-                      Last ~ {price} (proxy pair {mapped.symbol})
+                      {mapped.symbol} Data
                     </>
                   ) : (
-                    <>Loading price…</>
+                    <>Loading…</>
                   )}
                 </p>
               </div>
@@ -164,6 +152,7 @@ export default function IndexChartModal({ open, indexId, onClose }: Props) {
                 interval={interval}
                 height={400}
                 seriesType={seriesMode}
+                dataSource="yfinance"
                 fillParent
               />
             </div>

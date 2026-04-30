@@ -20,7 +20,7 @@ def calculate_confidence(hmm_probas: list, ml_probability: float,
     if ml_probability > 0.55:
         direction = "BUY"
     elif ml_probability < 0.45:
-        direction = "REDUCE"
+        direction = "SELL"
     else:
         direction = "HOLD"
 
@@ -70,14 +70,26 @@ def generate_live_signal(index_name: str) -> dict:
         atr = float(df_feat['atr_14'].iloc[-1]) \
               if 'atr_14' in df_feat.columns else 0
         current_price = live_price.get('price', 0)
-        stop_loss  = round(current_price - 2 * atr, 2) if atr > 0 else 0
-        target     = round(current_price + 3 * atr, 2) if atr > 0 else 0
+        
+        if confidence['direction'] == "SELL":
+            stop_loss  = round(current_price + 2 * atr, 2) if atr > 0 else 0
+            target     = round(current_price - 3 * atr, 2) if atr > 0 else 0
+        else:
+            stop_loss  = round(current_price - 2 * atr, 2) if atr > 0 else 0
+            target     = round(current_price + 3 * atr, 2) if atr > 0 else 0
 
         signal_doc = {
             "index_name":       index_name,
             "timestamp":        datetime.utcnow(),
             "date":             datetime.now().strftime("%Y-%m-%d"),
             "current_price":    current_price,
+            "open":             live_price.get('open', 0),
+            "high":             live_price.get('high', 0),
+            "low":              live_price.get('low', 0),
+            "volume":           live_price.get('volume', 0),
+            "change":           live_price.get('change', 0),
+            "change_pct":       live_price.get('change_pct', 0),
+            "market_state":     live_price.get('market_state', 'CLOSED'),
             "regime":           current_regime,
             "hmm_confidence":   confidence['hmm_confidence'],
             "ml_confidence":    confidence['ml_confidence'],

@@ -4,12 +4,11 @@ import StrategyComparisonChart from '../../components/charts/StrategyComparisonC
 import LazyQuantWiseCandlestickChart from '../../components/charts/LazyQuantWiseCandlestickChart'
 import { useRegime } from '../../hooks/useRegime'
 import { regimeAccent } from '../../lib/regimeChartStyle'
-import { STRATEGY_FINAL_RS, type StrategyKey } from '../../lib/strategyEquityMock'
+import { useBacktest } from '../../hooks/useBacktest'
+import { useEffect, useState } from 'react'
 
-const ANN = { Combined_v3: 39.91, ML_Signal: 36.33, Regime_Aware_v3: 34.64, Buy_Hold: 10.39 } as const
-const SHARPE = { Combined_v3: 1.65, ML_Signal: 1.52, Regime_Aware_v3: 1.47, Buy_Hold: 0.85 } as const
-
-const keys = Object.keys(STRATEGY_FINAL_RS) as StrategyKey[]
+const inputCls =
+  'mt-2 rounded-lg border border-[rgba(255,255,255,0.12)] bg-zinc-950 px-3 py-2.5 text-sm text-white shadow-inner [color-scheme:dark] outline-none focus:border-violet-500/60'
 
 export default function IndividualStrategyPage() {
   const { data } = useRegime()
@@ -21,20 +20,89 @@ export default function IndividualStrategyPage() {
     }
   }, [data])
 
-  const winners = useMemo(() => {
-    const bestFinal = keys.reduce((a, b) => (STRATEGY_FINAL_RS[a] >= STRATEGY_FINAL_RS[b] ? a : b))
-    const bestAnn = 'Combined_v3' as StrategyKey
-    const bestSharpe = 'Combined_v3' as StrategyKey
-    return { bestFinal, bestAnn, bestSharpe }
+  const mutation = useBacktest()
+
+  const [startDate, setStartDate] = useState('2000-01-01')
+  const [endDate, setEndDate] = useState('2026-01-01')
+  const [result, setResult] = useState<any>(null)
+
+  const handleRun = () => {
+    mutation.mutate({ start_date: startDate, end_date: endDate, initial_capital: 1000000 }, {
+      onSuccess: (data) => setResult(data)
+    })
+  }
+
+  // Auto run once
+  useEffect(() => {
+    handleRun()
   }, [])
+
+  const { strategyStats, keys, winners } = useMemo(() => {
+    if (!result?.backtests?.nifty) return { strategyStats: {}, keys: [], winners: {} }
+    
+    const records = result.backtests.nifty as Array<Record<string, any>>
+    const stats: Record<string, any> = {}
+    
+    let bestFinalStr = ''
+    let bestFinal = -Infinity
+    let bestAnnStr = ''
+    let bestAnn = -Infinity
+    let bestSharpeStr = ''
+    let bestSharpe = -Infinity
+
+    for (const r of records) {
+      const name = r.Strategy
+      if (!name || name === 'All') continue
+      
+      const finalValStr = Object.keys(r).find(k => k.startsWith('Final Value'))
+      let fv = 0
+      if (finalValStr && r[finalValStr] && typeof r[finalValStr] === 'string') {
+        fv = Number(r[finalValStr].replace(/[^0-9.-]+/g,""))
+      }
+      
+      const ann = Number(r['Ann. Return (%)']) || 0
+      const sharpe = Number(r['Sharpe Ratio']) || 0
+      
+      stats[name] = { final: fv, ann, sharpe }
+      
+      if (fv > bestFinal) { bestFinal = fv; bestFinalStr = name; }
+      if (ann > bestAnn) { bestAnn = ann; bestAnnStr = name; }
+      if (sharpe > bestSharpe) { bestSharpe = sharpe; bestSharpeStr = name; }
+    }
+    
+    return { 
+      strategyStats: stats, 
+      keys: Object.keys(stats).filter(k => ['Combined_v3', 'ML_Signal', 'Regime_Aware_v3', 'Buy_Hold'].includes(k)),
+      winners: { bestFinal: bestFinalStr, bestAnn: bestAnnStr, bestSharpe: bestSharpeStr } 
+    }
+  }, [result])
 
   return (
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-semibold text-white">Strategy comparison</h1>
         <p className="mt-1 text-sm text-white/60">
-          Four equity curves with mock terminal wealth aligned to research outputs (10L base).
+          Four equity curves with actual simulated wealth aligned to research outputs based on your dates.
         </p>
+      </div>
+
+      <div className="flex flex-wrap items-end gap-4 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-5">
+        <label className="flex flex-col text-sm font-medium text-white/75">
+          Start date
+          <input type="date" className={inputCls} value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+        </label>
+        <label className="flex flex-col text-sm font-medium text-white/75">
+          End date
+          <input type="date" className={inputCls} value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+        </label>
+        <button
+          type="button"
+          onClick={handleRun}
+          disabled={mutation.isPending}
+          className="rounded-lg bg-violet-600 px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-500 disabled:opacity-60"
+        >
+          {mutation.isPending ? 'Calculating...' : 'Update Strategies'}
+        </button>
       </div>
 
       <div className="rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-5 shadow-glow">
@@ -52,7 +120,7 @@ export default function IndividualStrategyPage() {
             >
               {regimes.nifty}
             </div>
-            <LazyQuantWiseCandlestickChart symbol="BTCUSDT" symbolLabel="NIFTY 50 (Live Demo)" interval="5m" height={350} />
+            <LazyQuantWiseCandlestickChart symbol="NIFTY50" symbolLabel="NIFTY 50" interval="5m" height={350} dataSource="yfinance" />
           </div>
           <div>
             <div
@@ -65,7 +133,7 @@ export default function IndividualStrategyPage() {
             >
               {regimes.sp500}
             </div>
-            <LazyQuantWiseCandlestickChart symbol="ETHUSDT" symbolLabel="S&P 500 (Live Demo)" interval="5m" height={350} />
+            <LazyQuantWiseCandlestickChart symbol="SP500" symbolLabel="S&P 500" interval="5m" height={350} dataSource="yfinance" />
           </div>
         </div>
       </div>
@@ -83,21 +151,21 @@ export default function IndividualStrategyPage() {
               <div className="flex items-center justify-between gap-2">
                 <span className="text-white/55">Final value</span>
                 <span className="inline-flex items-center gap-1.5 font-medium text-white">
-                  Rs {STRATEGY_FINAL_RS[k].toLocaleString('en-IN')}
+                  Rs {strategyStats[k]?.final?.toLocaleString('en-IN') ?? '---'}
                   {winners.bestFinal === k ? <Crown className="size-4 text-amber-400" /> : null}
                 </span>
               </div>
               <div className="flex items-center justify-between gap-2">
-                <span className="text-white/55">Ann. return (mock)</span>
+                <span className="text-white/55">Ann. return</span>
                 <span className="inline-flex items-center gap-1.5 text-white">
-                  {ANN[k].toFixed(2)}%
+                  {strategyStats[k]?.ann?.toFixed(2) ?? '---'}%
                   {winners.bestAnn === k ? <Crown className="size-4 text-amber-400" /> : null}
                 </span>
               </div>
               <div className="flex items-center justify-between gap-2">
-                <span className="text-white/55">Sharpe (mock)</span>
+                <span className="text-white/55">Sharpe</span>
                 <span className="inline-flex items-center gap-1.5 text-white">
-                  {SHARPE[k].toFixed(2)}
+                  {strategyStats[k]?.sharpe?.toFixed(2) ?? '---'}
                   {winners.bestSharpe === k ? <Crown className="size-4 text-amber-400" /> : null}
                 </span>
               </div>

@@ -217,16 +217,26 @@ export default function IndividualRegimePage() {
           <div className="mt-6 rounded-xl border border-[rgba(255,255,255,0.08)] bg-black/20 p-4">
             <div className="text-sm font-semibold text-white/90">Price action with regime context</div>
             <p className="mt-1 text-xs text-white/50">
-              NIFTY 50 proxy stream with a shaded band and label for the current HMM regime (educational overlay).
+              NIFTY 50 and S&P 500 proxy streams with a shaded band and label for the current HMM regime (educational overlay).
             </p>
             <div className="mt-4 overflow-hidden rounded-xl border border-white/[0.06] bg-[#0d0d14]">
               <LazyQuantWiseCandlestickChart
                 key={regimes.nifty}
-                symbol="BTCUSDT"
+                symbol="NIFTY50"
                 symbolLabel="NIFTY 50 (Live Demo)"
                 interval="5m"
                 height={350}
+                dataSource="yfinance"
                 regimeBand={{ label: regimes.nifty, color: regimeAccent(regimes.nifty) }}
+              />
+              <LazyQuantWiseCandlestickChart
+                key={regimes.sp500}
+                symbol="SP500"
+                symbolLabel="S&P 500 (Live Demo)"
+                interval="5m"
+                height={350}
+                dataSource="yfinance"
+                regimeBand={{ label: regimes.sp500, color: regimeAccent(regimes.sp500) }}
               />
             </div>
           </div>

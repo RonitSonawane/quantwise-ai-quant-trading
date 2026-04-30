@@ -8,6 +8,8 @@ export function useSimulation() {
       strategy: string
       initial_capital: number
       limit_points?: number
+      start_date?: string
+      end_date?: string
     }) => simulateInvestment(args),
   })
 }

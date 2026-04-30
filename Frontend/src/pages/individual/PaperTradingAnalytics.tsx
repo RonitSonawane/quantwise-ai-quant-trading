@@ -1,4 +1,4 @@
-import React from 'react';
+// import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getTradeHistory, getMetrics } from '../../api/paperTrading';
 import { 
@@ -111,7 +111,7 @@ export default function PaperTradingAnalytics() {
                   <YAxis stroke="rgba(255,255,255,0.5)" tickFormatter={v => `₹${v}`} />
                   <Tooltip 
                     contentStyle={{ backgroundColor: '#12121A', borderColor: 'rgba(255,255,255,0.1)' }}
-                    formatter={(val: number) => [`₹${val.toFixed(2)}`, 'Cum. P&L']}
+                    formatter={(val: any) => [`₹${Number(val).toFixed(2)}`, 'Cum. P&L']}
                   />
                   <ReferenceLine y={0} stroke="rgba(255,255,255,0.3)" />
                   <Line 

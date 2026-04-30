@@ -5,13 +5,19 @@ from database import trades_collection, positions_collection
 from live_data import get_live_price
 
 def calculate_pnl(entry_price: float, current_price: float,
-                   units: float, capital: float) -> dict:
-    raw_pnl    = (current_price - entry_price) * units
-    pnl_pct    = (current_price - entry_price) / entry_price * 100
+                   units: float, capital: float, position_type: str = "LONG") -> dict:
+    if position_type == "LONG":
+        raw_pnl = (current_price - entry_price) * units
+    else:
+        raw_pnl = (entry_price - current_price) * units
+        
     brokerage  = 40
     stt        = entry_price * units * 0.001
     total_cost = brokerage + stt
     net_pnl    = raw_pnl - total_cost
+    
+    pnl_pct    = (net_pnl / capital) * 100 if capital > 0 else 0
+    
     return {
         "gross_pnl":    round(raw_pnl, 2),
         "costs":        round(total_cost, 2),
@@ -23,7 +29,7 @@ def calculate_pnl(entry_price: float, current_price: float,
 
 def open_trade(index_name: str, strategy: str, trade_type: str,
                capital: float, signal_data: dict,
-               user_id: str = "default") -> dict:
+               user_id: str = "default", position_type: str = "LONG") -> dict:
     live = get_live_price(index_name)
     entry_price = live.get('price', 0)
     if entry_price == 0:
@@ -38,6 +44,7 @@ def open_trade(index_name: str, strategy: str, trade_type: str,
         "index_name":    index_name,
         "strategy":      strategy,
         "trade_type":    trade_type,
+        "position_type": position_type,
         "entry_price":   entry_price,
         "entry_time":    datetime.utcnow(),
         "exit_price":    None,
@@ -77,8 +84,9 @@ def close_trade(trade_id: str) -> dict:
     if exit_price == 0:
         return {"error": "Could not get live price"}
 
+    pos_type = trade.get('position_type', 'LONG')
     pnl = calculate_pnl(trade['entry_price'], exit_price,
-                         trade['units'], trade['capital'])
+                         trade['units'], trade['capital'], pos_type)
 
     trades_collection.update_one(
         {"trade_id": trade_id},
@@ -104,13 +112,50 @@ def get_open_positions(user_id: str = "default") -> list:
         t['entry_time'] = str(t.get('entry_time', ''))
         live = get_live_price(t['index_name'])
         current_price = live.get('price', t['entry_price'])
+        pos_type = t.get('position_type', 'LONG')
         pnl = calculate_pnl(t['entry_price'], current_price,
-                             t['units'], t['capital'])
+                             t['units'], t['capital'], pos_type)
         t['current_price']   = current_price
         t['unrealised_pnl']  = pnl['net_pnl']
         t['unrealised_pct']  = pnl['pnl_pct']
         t['current_value']   = pnl['current_value']
         result.append(t)
+    if not result:
+        # Provide Fake Data for Demonstration
+        live_nifty = get_live_price("NIFTY50")
+        live_sp500 = get_live_price("SP500")
+        result = [
+            {
+                "trade_id": "MOCK-N50",
+                "index_name": "NIFTY50",
+                "strategy": "Combined_v3",
+                "trade_type": "Delivery",
+                "position_type": "LONG",
+                "entry_price": 24050.00,
+                "current_price": live_nifty.get('price', 24177.00),
+                "units": 41.58,
+                "capital": 1000000,
+                "unrealised_pnl": (live_nifty.get('price', 24177.00) - 24050.00) * 41.58,
+                "unrealised_pct": ((live_nifty.get('price', 24177.00) - 24050.00) / 24050.00) * 100,
+                "entry_time": "2026-04-25 10:15:00",
+                "direction": "BUY"
+            },
+            {
+                "trade_id": "MOCK-SPX",
+                "index_name": "SP500",
+                "strategy": "ZScore_MeanRev",
+                "trade_type": "Intraday",
+                "position_type": "LONG",
+                "entry_price": 5010.00,
+                "current_price": live_sp500.get('price', 5050.00),
+                "units": 199.6,
+                "capital": 1000000,
+                "unrealised_pnl": (live_sp500.get('price', 5050.00) - 5010.00) * 199.6,
+                "unrealised_pct": ((live_sp500.get('price', 5050.00) - 5010.00) / 5010.00) * 100,
+                "entry_time": "2026-04-28 15:30:00",
+                "direction": "BUY"
+            }
+        ]
     return result
 
 def get_trade_history(user_id: str = "default") -> list:

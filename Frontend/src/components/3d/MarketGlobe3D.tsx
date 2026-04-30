@@ -169,7 +169,7 @@ export default function MarketGlobe3D() {
       }}
     >
       <Canvas
-        camera={{ position: [0, 1.05, 4.2], fov: 42 }}
+        camera={{ position: [0, 0.2, 5.0], fov: 42 }}
         style={{ width: '100%', height: 220, minHeight: 200, display: 'block' }}
         dpr={[1, 1.5]}
       >
@@ -178,7 +178,9 @@ export default function MarketGlobe3D() {
         <pointLight position={[3, 4, 3]} intensity={1.1} color="#a78bfa" />
         <pointLight position={[-2, 2, 2]} intensity={0.45} color="#3b82f6" />
         <Suspense fallback={null}>
-          <DashboardMarketScene />
+          <group position={[0, -0.4, 0]}>
+            <DashboardMarketScene />
+          </group>
         </Suspense>
       </Canvas>
     </div>

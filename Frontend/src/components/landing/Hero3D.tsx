@@ -7,13 +7,13 @@ import FinancialMarket3D from '../3d/FinancialMarket3D'
 function ScaledMarket3D() {
   const [scale, setScale] = useState(1)
   useEffect(() => {
-    const update = () => setScale(window.innerWidth < 640 ? 0.82 : 1)
+    const update = () => setScale(window.innerWidth < 640 ? 0.7 : window.innerWidth < 1024 ? 0.85 : 1)
     update()
     window.addEventListener('resize', update)
     return () => window.removeEventListener('resize', update)
   }, [])
   return (
-    <group scale={scale} position={[0, -0.15, 0]}>
+    <group scale={scale} position={[0, -1.0, 0]}>
       <FinancialMarket3D />
     </group>
   )
@@ -22,7 +22,7 @@ function ScaledMarket3D() {
 export default function Hero3D({ hidden = false }: { hidden?: boolean }) {
   return (
     <Canvas
-      camera={{ position: [0, 1.95, 8.2], fov: 38 }}
+      camera={{ position: [0, 0.5, 8.5], fov: 38 }}
       style={{
         width: '100%',
         maxWidth: '100%',

@@ -23,12 +23,12 @@ export default function ExperimentsBars3D({
 
   return (
     <div className="h-[220px] w-full overflow-hidden rounded-xl border border-white/[0.08] bg-[#0a0a12]">
-      <Canvas camera={{ position: [0, 2.2, 7], fov: 45 }} dpr={[1, 1.5]}>
+      <Canvas camera={{ position: [0, 0.5, 7.5], fov: 42 }} dpr={[1, 1.5]}>
         <color attach="background" args={['#0a0a12']} />
         <ambientLight intensity={0.45} />
         <directionalLight position={[3, 5, 2]} intensity={1} />
         <Suspense fallback={null}>
-          <group ref={groupRef}>
+          <group ref={groupRef} position={[0, -0.8, 0]}>
             {bars.map((b, i) => {
               const x = (i - (bars.length - 1) / 2) * 0.85
               const h = (b.height / maxH) * 2.2 + 0.15

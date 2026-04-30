@@ -12,6 +12,8 @@ export async function simulateInvestment(args: {
   strategy: string
   initial_capital: number
   limit_points?: number
+  start_date?: string
+  end_date?: string
 }): Promise<SimulateResponse> {
   const res = await api.post('/simulate', args)
   return res.data as SimulateResponse

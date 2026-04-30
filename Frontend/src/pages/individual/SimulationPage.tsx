@@ -46,6 +46,8 @@ export default function IndividualSimulationPage() {
   const [strategy, setStrategy] = useState<string>('Combined_v3')
   const [initialCapital, setInitialCapital] = useState<number>(100000)
   const [limitPoints, setLimitPoints] = useState<number>(400)
+  const [startDate, setStartDate] = useState('2000-01-01')
+  const [endDate, setEndDate] = useState('2026-01-01')
 
   const [equityPoints, setEquityPoints] = useState<Array<{ date: string; value: number }>>([])
   const [result, setResult] = useState<Record<string, unknown> | null>(null)
@@ -109,8 +111,18 @@ export default function IndividualSimulationPage() {
             />
           </label>
 
+          <label className="block text-left">
+            <span className="text-sm font-medium text-white/75">Start date</span>
+            <input type="date" className={inputCls} value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+          </label>
+
+          <label className="block text-left">
+            <span className="text-sm font-medium text-white/75">End date</span>
+            <input type="date" className={inputCls} value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+          </label>
+
           <p className="text-xs text-white/45">
-            Date range is taken from the simulator output after you run (full history of the strategy series).
+            Simulation runs over the selected date range.
           </p>
         </div>
 
@@ -127,6 +139,8 @@ export default function IndividualSimulationPage() {
                   strategy,
                   initial_capital: initialCapital,
                   limit_points: limitPoints,
+                  start_date: startDate,
+                  end_date: endDate,
                 },
                 {
                   onSuccess: (data) => {

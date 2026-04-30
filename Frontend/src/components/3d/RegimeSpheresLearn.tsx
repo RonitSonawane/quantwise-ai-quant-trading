@@ -74,17 +74,19 @@ export default function RegimeSpheresLearn() {
         ))}
       </div>
       <div className="h-[280px] w-full overflow-hidden rounded-xl border border-white/[0.08] bg-[#0a0a12]">
-        <Canvas camera={{ position: [0, 1.2, 5.5], fov: 42 }} dpr={[1, 1.5]}>
+        <Canvas camera={{ position: [0, 0.2, 6.5], fov: 42 }} dpr={[1, 1.5]}>
           <color attach="background" args={['#0a0a12']} />
           <ambientLight intensity={0.5} />
           <directionalLight position={[4, 6, 4]} intensity={0.9} />
           <Suspense fallback={null}>
-            {REGIMES.map((r, i) => (
-              <Sphere key={r.name} color={r.color} position={r.pos as [number, number, number]} name={r.name} pulse={i === current} />
-            ))}
-            {pairs.map((pts, idx) => (
-              <Line key={idx} points={pts} color="#6b7280" lineWidth={1} transparent opacity={0.45} />
-            ))}
+            <group position={[0, -1.1, 0]}>
+              {REGIMES.map((r, i) => (
+                <Sphere key={r.name} color={r.color} position={r.pos as [number, number, number]} name={r.name} pulse={i === current} />
+              ))}
+              {pairs.map((pts, idx) => (
+                <Line key={idx} points={pts} color="#6b7280" lineWidth={1} transparent opacity={0.45} />
+              ))}
+            </group>
           </Suspense>
         </Canvas>
       </div>

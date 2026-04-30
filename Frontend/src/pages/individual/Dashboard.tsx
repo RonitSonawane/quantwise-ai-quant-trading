@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { getLiveSignal } from '../../api/paperTrading'
+import { simulateInvestment } from '../../api/simulate'
 import { Activity, BarChart3, BrainCircuit } from 'lucide-react'
 import EquityCurveChart from '../../components/charts/EquityCurveChart'
 import LiveIndexCard from '../../components/charts/LiveIndexCard'
@@ -22,9 +23,9 @@ function regimePanelBorder(regime: string) {
 }
 
 const liveTabs = [
-  { key: 'nifty' as const, label: 'NIFTY 50', symbol: 'BTCUSDT', symLabel: 'NIFTY 50 (Live Demo)' },
-  { key: 'sp' as const, label: 'S&P 500', symbol: 'ETHUSDT', symLabel: 'S&P 500 (Live Demo)' },
-  { key: 'sensex' as const, label: 'SENSEX', symbol: 'BNBUSDT', symLabel: 'SENSEX (Live Demo)' },
+  { key: 'nifty' as const, label: 'NIFTY 50', symbol: 'NIFTY50', symLabel: 'NIFTY 50 (Live Demo)' },
+  { key: 'sp' as const, label: 'S&P 500', symbol: 'SP500', symLabel: 'S&P 500 (Live Demo)' },
+  { key: 'sensex' as const, label: 'SENSEX', symbol: 'SENSEX', symLabel: 'SENSEX (Live Demo)' },
 ]
 
 function TodaySignalPreview() {
@@ -73,15 +74,29 @@ export default function IndividualDashboard() {
     }
   }, [data])
 
-  const mockEquity = useMemo(
-    () =>
-      Array.from({ length: 31 }).map((_, i) => {
-        const d = new Date(2025, 0, 1 + i)
-        const value = 100000 + (15000 * i) / 30
-        return { date: d.toISOString().slice(0, 10), value }
-      }),
-    [],
-  )
+  const simStartDate = '2025-01-01';
+  const simEndDate = '2026-01-01';
+
+  const { data: simulationData } = useQuery({
+    queryKey: ['dashboard-simulation', 'nifty', 'Combined_v3', simStartDate, simEndDate],
+    queryFn: () => simulateInvestment({
+      asset: 'nifty',
+      strategy: 'Combined_v3',
+      initial_capital: 100000,
+      start_date: simStartDate,
+      end_date: simEndDate,
+    })
+  });
+
+  const equityCurve = useMemo(() => {
+    if (simulationData?.result?.equity_curve) {
+      return (simulationData.result.equity_curve as any[]).map(p => ({
+        date: p.date,
+        value: Number(p.value)
+      }));
+    }
+    return [{ date: simStartDate, value: 100000 }];
+  }, [simulationData]);
 
   const live = useMemo(
     () => [
@@ -128,9 +143,9 @@ export default function IndividualDashboard() {
 
         <div className="rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-6 shadow-glow">
           <div className="text-lg font-semibold text-white">Portfolio equity</div>
-          <p className="mt-1 text-sm text-white/55">Mock curve from Rs 1,00,000 → Rs 1,15,000.</p>
+          <p className="mt-1 text-sm text-white/55">Actual curve from Rs 1,00,000 via Combined_v3 strategy (2025-2026).</p>
           <div className="mt-4">
-            <EquityCurveChart data={mockEquity} />
+            <EquityCurveChart data={equityCurve} />
           </div>
         </div>
       </div>
@@ -150,7 +165,7 @@ export default function IndividualDashboard() {
 
       <div className="rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-6 shadow-glow">
         <div className="text-lg font-semibold text-white">Live market charts</div>
-        <p className="mt-1 text-sm text-white/55">Real-time proxy candles (Binance) mapped to each index for the demo.</p>
+        <p className="mt-1 text-sm text-white/55">Real-time authentic index candles from Yahoo Finance.</p>
         <div className="mt-4 flex flex-wrap gap-2">
           {liveTabs.map((t) => (
             <button
@@ -186,15 +201,16 @@ export default function IndividualDashboard() {
             symbolLabel={activeLive.symLabel}
             interval={liveIv}
             height={350}
+            dataSource="yfinance"
           />
         </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
-        <MetricCard label="Portfolio value" value="Rs 1,15,000" sub="Initial Rs 1,00,000" trend="up" />
-        <MetricCard label="Total return" value="+15.00%" sub="Last 30 days (mock)" trend="up" />
-        <MetricCard label="Sharpe ratio" value="1.42" sub="Risk-adjusted (mock)" trend="up" />
-        <MetricCard label="Max drawdown" value="-4.8%" sub="Worst dip (mock)" trend="down" />
+        <MetricCard label="Portfolio value" value={`Rs ${equityCurve[equityCurve.length - 1]?.value.toLocaleString('en-IN')}`} sub="Initial Rs 1,00,000" trend="up" />
+        <MetricCard label="Total return" value={`${(((equityCurve[equityCurve.length - 1]?.value / 100000) - 1) * 100).toFixed(2)}%`} sub="2025-2026" trend="up" />
+        <MetricCard label="Sharpe ratio" value={(simulationData?.result?.sharpe_ratio as string | undefined) ?? '0.0'} sub="Risk-adjusted" trend="up" />
+        <MetricCard label="Max drawdown" value={`${(simulationData?.result?.max_drawdown_pct as string | undefined) ?? '0'}%`} sub="Worst dip" trend="down" />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">

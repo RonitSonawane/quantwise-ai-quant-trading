@@ -18,6 +18,7 @@ export const openTrade = (data: {
   trade_type: string;
   capital: number;
   user_id?: string;
+  position_type?: string;
 }) => api.post('/paper-trade/open', data).then(r => r.data);
 
 export const closeTrade = (trade_id: string) =>

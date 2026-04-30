@@ -5,9 +5,11 @@ import {
   RefreshCcw, Clock, Target, ShieldAlert, ArrowRight, X
 } from 'lucide-react';
 import { 
-  getAllSignals, getPositions, openTrade, closeTrade 
+  getAllSignals, getPositions, getTradeHistory, openTrade, closeTrade 
 } from '../../api/paperTrading';
 import toast from 'react-hot-toast';
+import LiveIndexBanner from '../../components/landing/LiveIndexBanner';
+import QuantWiseCandlestickChart from '../../components/charts/QuantWiseCandlestickChart';
 
 const STRATEGIES = [
   "Buy_Hold", "SMA_Crossover", "EMA_Crossover", "MACD_Signal",
@@ -48,13 +50,51 @@ function SignalCard({ indexName, data, openModal }: { indexName: string, data: a
     <div className="flex flex-col gap-4 rounded-xl bg-[#12121A] p-6 border border-[rgba(255,255,255,0.05)]">
       <div className="flex items-start justify-between">
         <div>
-          <h3 className="text-xl font-bold text-white">{indexName}</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="text-xl font-bold text-white">{indexName}</h3>
+            {data.market_state === 'OPEN' ? (
+              <span className="flex items-center gap-1 rounded-full bg-green-500/20 px-2 py-0.5 text-[10px] font-bold text-green-400">
+                <span className="relative flex size-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75"></span>
+                  <span className="relative inline-flex size-2 rounded-full bg-green-500"></span>
+                </span>
+                MARKET OPEN
+              </span>
+            ) : (
+              <span className="rounded-full bg-red-500/20 px-2 py-0.5 text-[10px] font-bold text-red-400">
+                MARKET CLOSED
+              </span>
+            )}
+          </div>
           <div className={`mt-1 flex items-center gap-2 text-2xl font-bold ${priceColor}`}>
             {data.current_price?.toFixed(2)}
+            <span className="text-sm font-normal">
+              {data.change >= 0 ? '+' : ''}{data.change?.toFixed(2)} ({data.change_pct?.toFixed(2)}%)
+            </span>
           </div>
         </div>
         <div className={`rounded-full px-3 py-1 text-xs font-bold ${getRegimeColor(data.regime)}`}>
           {data.regime}
+        </div>
+      </div>
+
+      {/* OHLCV Data Grid */}
+      <div className="grid grid-cols-4 gap-2 rounded-lg bg-white/5 p-3 text-xs">
+        <div>
+          <div className="text-white/50">Open</div>
+          <div className="font-semibold">{data.open?.toFixed(2)}</div>
+        </div>
+        <div>
+          <div className="text-white/50">High</div>
+          <div className="font-semibold text-green-400">{data.high?.toFixed(2)}</div>
+        </div>
+        <div>
+          <div className="text-white/50">Low</div>
+          <div className="font-semibold text-red-400">{data.low?.toFixed(2)}</div>
+        </div>
+        <div>
+          <div className="text-white/50">Vol (M)</div>
+          <div className="font-semibold">{(data.volume / 1000000)?.toFixed(1)}M</div>
         </div>
       </div>
 
@@ -122,16 +162,14 @@ function SignalCard({ indexName, data, openModal }: { indexName: string, data: a
 
       <div className="mt-4 flex gap-3">
         <button
-          disabled={!data.should_trade}
           onClick={() => openModal(indexName, 'Intraday')}
-          className="flex-1 rounded-lg bg-violet-600 py-2.5 text-sm font-semibold text-white transition disabled:opacity-50 hover:bg-violet-700"
+          className="flex-1 rounded-lg bg-violet-600 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-700"
         >
           Intraday Trade
         </button>
         <button
-          disabled={!data.should_trade}
           onClick={() => openModal(indexName, 'Delivery')}
-          className="flex-1 rounded-lg border border-violet-600 py-2.5 text-sm font-semibold text-violet-400 transition disabled:opacity-50 hover:bg-violet-600/10"
+          className="flex-1 rounded-lg border border-violet-600 py-2.5 text-sm font-semibold text-violet-400 transition hover:bg-violet-600/10"
         >
           Delivery Trade
         </button>
@@ -143,10 +181,13 @@ function SignalCard({ indexName, data, openModal }: { indexName: string, data: a
 export default function PaperTradingPage() {
   const queryClient = useQueryClient();
   const [modalOpen, setModalOpen] = useState(false);
-  const [tradeForm, setTradeForm] = useState({ index: '', type: '', capital: 100000, strategy: 'Combined_v3' });
+  const [tradeForm, setTradeForm] = useState({ index: '', type: '', capital: 1000000, strategy: 'Combined_v3', position_type: 'LONG' });
+  const [activeTab, setActiveTab] = useState<'positions' | 'holdings' | 'history'>('positions');
+  const [historyFilter, setHistoryFilter] = useState('All');
+  const [marketClosedAlert, setMarketClosedAlert] = useState<{show: boolean, index: string, reopen: string}>({show: false, index: '', reopen: ''});
 
   // Queries
-  const { data: signals, refetch: refetchSignals, dataUpdatedAt } = useQuery({
+  const { data: signals, refetch: refetchSignals, dataUpdatedAt, isFetching: isFetchingSignals } = useQuery({
     queryKey: ['live-signals'],
     queryFn: getAllSignals,
     refetchInterval: 60000
@@ -155,7 +196,12 @@ export default function PaperTradingPage() {
   const { data: positions = [], refetch: refetchPositions, isLoading: loadingPositions } = useQuery({
     queryKey: ['paper-positions'],
     queryFn: getPositions,
-    refetchInterval: 30000
+    refetchInterval: 3000
+  });
+
+  const { data: history = [], refetch: refetchHistory, isLoading: loadingHistory } = useQuery({
+    queryKey: ['paper-history'],
+    queryFn: getTradeHistory,
   });
 
   // Mutations
@@ -179,15 +225,51 @@ export default function PaperTradingPage() {
   });
 
   const handleOpenTrade = () => {
+    const activeSignal = signals ? signals[tradeForm.index] : null;
+    if (activeSignal && activeSignal.market_state === 'CLOSED') {
+      const reopenTime = tradeForm.index === 'NIFTY50' ? '9:15 AM IST' : '7:00 PM IST (US Market Hours)';
+      setModalOpen(false);
+      setMarketClosedAlert({ show: true, index: tradeForm.index, reopen: reopenTime });
+      return;
+    }
+
     openMut.mutate({
       index_name: tradeForm.index,
       strategy: tradeForm.strategy,
       trade_type: tradeForm.type,
-      capital: tradeForm.capital
+      capital: tradeForm.capital,
+      position_type: tradeForm.position_type
     });
   };
 
+  const intradayPositions = positions.filter((p: any) => p.trade_type === 'Intraday');
+  const deliveryPositions = positions.filter((p: any) => p.trade_type === 'Delivery');
+  
   const totalOpen = positions.length;
+
+  const getFilteredHistory = () => {
+    if (historyFilter === 'All') return history;
+    const now = new Date();
+    return history.filter((p: any) => {
+      if (!p.exit_time) return false;
+      const exitDate = new Date(p.exit_time);
+      if (historyFilter === 'This Year') {
+        return exitDate.getFullYear() === now.getFullYear();
+      }
+      if (historyFilter === 'This Week') {
+        const diff = now.getTime() - exitDate.getTime();
+        return diff <= 7 * 24 * 60 * 60 * 1000;
+      }
+      if (historyFilter.startsWith('Q')) {
+        const q = parseInt(historyFilter[1]);
+        const month = exitDate.getMonth();
+        const expectedQ = Math.floor(month / 3) + 1;
+        return exitDate.getFullYear() === now.getFullYear() && expectedQ === q;
+      }
+      return true;
+    });
+  };
+  const filteredHistory = getFilteredHistory();
   const totalPnl = positions.reduce((acc: number, p: any) => acc + (p.unrealised_pnl || 0), 0);
   const sortedByPnl = [...positions].sort((a, b) => (b.unrealised_pnl || 0) - (a.unrealised_pnl || 0));
   const bestTrade = sortedByPnl[0]?.unrealised_pnl || 0;
@@ -197,19 +279,20 @@ export default function PaperTradingPage() {
   const estUnits = activeSignal ? (tradeForm.capital / activeSignal.current_price).toFixed(4) : 0;
 
   return (
-    <div className="min-h-screen bg-[#0A0A0F] text-white p-6 pb-24">
-      <div className="mx-auto max-w-[1920px] space-y-6">
-        
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Paper Trading</h1>
-            <p className="text-white/60">Live market signals and virtual portfolio management</p>
-          </div>
+    <div className="min-h-screen bg-[#0A0A0F] text-white">
+      <LiveIndexBanner />
+      <div className="p-6 pb-24">
+        <div className="mx-auto max-w-[1920px] space-y-6">
+          
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold">Paper Trading</h1>
+            </div>
           <div className="flex items-center gap-4 text-sm text-white/50">
             {dataUpdatedAt && <span>Last update: {new Date(dataUpdatedAt).toLocaleTimeString()}</span>}
-            <button onClick={() => refetchSignals()} className="rounded-lg bg-white/5 p-2 hover:bg-white/10">
-              <RefreshCcw className="size-4" />
+            <button onClick={() => refetchSignals()} className="rounded-lg bg-white/5 p-2 hover:bg-white/10 transition-transform">
+              <RefreshCcw className={`size-4 ${isFetchingSignals ? 'animate-spin text-violet-400' : ''}`} />
             </button>
           </div>
         </div>
@@ -250,67 +333,143 @@ export default function PaperTradingPage() {
           />
         </div>
 
+        {/* Live Charts */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div className="rounded-xl bg-[#12121A] border border-[rgba(255,255,255,0.05)] overflow-hidden p-1">
+            <QuantWiseCandlestickChart symbol="NIFTY50" symbolLabel="NIFTY 50" interval="1m" height={350} dataSource="yfinance" />
+          </div>
+          <div className="rounded-xl bg-[#12121A] border border-[rgba(255,255,255,0.05)] overflow-hidden p-1">
+            <QuantWiseCandlestickChart symbol="SP500" symbolLabel="S&P 500" interval="1m" height={350} dataSource="yfinance" />
+          </div>
+        </div>
+
         {/* Positions Table */}
         <div className="rounded-xl bg-[#12121A] border border-[rgba(255,255,255,0.05)] overflow-hidden">
-          <div className="flex items-center justify-between border-b border-[rgba(255,255,255,0.05)] p-5">
-            <h2 className="text-xl font-bold">Open Positions</h2>
-            <button onClick={() => refetchPositions()} className="flex items-center gap-2 rounded-lg bg-white/5 px-3 py-1.5 text-sm hover:bg-white/10">
-              <RefreshCcw className="size-4" /> Refresh
-            </button>
+          <div className="flex items-center justify-between border-b border-[rgba(255,255,255,0.05)] p-0 pl-2">
+            <div className="flex gap-2">
+              <button 
+                onClick={() => setActiveTab('positions')}
+                className={`px-4 py-4 text-sm font-semibold border-b-2 transition ${activeTab === 'positions' ? 'border-violet-500 text-violet-400' : 'border-transparent text-white/60 hover:text-white'}`}
+              >
+                Positions (Intraday)
+              </button>
+              <button 
+                onClick={() => setActiveTab('holdings')}
+                className={`px-4 py-4 text-sm font-semibold border-b-2 transition ${activeTab === 'holdings' ? 'border-violet-500 text-violet-400' : 'border-transparent text-white/60 hover:text-white'}`}
+              >
+                Holdings (Delivery)
+              </button>
+              <button 
+                onClick={() => { setActiveTab('history'); refetchHistory(); }}
+                className={`px-4 py-4 text-sm font-semibold border-b-2 transition ${activeTab === 'history' ? 'border-violet-500 text-violet-400' : 'border-transparent text-white/60 hover:text-white'}`}
+              >
+                History (Closed)
+              </button>
+            </div>
+            <div className="pr-5">
+              <button onClick={() => { refetchPositions(); if (activeTab === 'history') refetchHistory(); }} className="flex items-center gap-2 rounded-lg bg-white/5 px-3 py-1.5 text-sm hover:bg-white/10 transition">
+                <RefreshCcw className={`size-4 ${loadingPositions || loadingHistory ? 'animate-spin' : ''}`} /> Refresh
+              </button>
+            </div>
           </div>
+          
+          {activeTab === 'history' && (
+            <div className="flex items-center gap-4 px-6 py-4 border-b border-[rgba(255,255,255,0.05)] bg-[#0A0A0F]/50">
+              <span className="text-sm font-semibold text-white/60">Filter by Date:</span>
+              <select 
+                value={historyFilter}
+                onChange={e => setHistoryFilter(e.target.value)}
+                className="rounded-lg border border-white/10 bg-[#12121A] px-3 py-1.5 text-sm text-white focus:border-violet-500 focus:outline-none"
+              >
+                <option value="All">All Time</option>
+                <option value="This Year">This Year</option>
+                <option value="Q1">Q1</option>
+                <option value="Q2">Q2</option>
+                <option value="Q3">Q3</option>
+                <option value="Q4">Q4</option>
+                <option value="This Week">This Week</option>
+              </select>
+            </div>
+          )}
           
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="bg-white/5 text-white/60">
                 <tr>
+                  <th className="p-4 font-medium">Date</th>
                   <th className="p-4 font-medium">Index</th>
                   <th className="p-4 font-medium">Strategy</th>
                   <th className="p-4 font-medium">Entry Price</th>
-                  <th className="p-4 font-medium">Current Price</th>
+                  <th className="p-4 font-medium">{activeTab === 'history' ? 'Exit Price' : 'Current Price'}</th>
                   <th className="p-4 font-medium">Units</th>
-                  <th className="p-4 font-medium">Unrealised P&L</th>
+                  <th className="p-4 font-medium">{activeTab === 'history' ? 'Net P&L' : 'Unrealised P&L'}</th>
                   <th className="p-4 font-medium">P&L %</th>
-                  <th className="p-4 font-medium">Action</th>
+                  {activeTab !== 'history' && <th className="p-4 font-medium">Action</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-[rgba(255,255,255,0.05)]">
-                {loadingPositions ? (
-                  <tr><td colSpan={8} className="p-8 text-center text-white/50">Loading positions...</td></tr>
-                ) : positions.length === 0 ? (
+                {loadingPositions || loadingHistory ? (
+                  <tr><td colSpan={9} className="p-8 text-center text-white/50">Loading data...</td></tr>
+                ) : (activeTab === 'positions' && intradayPositions.length === 0) || 
+                    (activeTab === 'holdings' && deliveryPositions.length === 0) || 
+                    (activeTab === 'history' && filteredHistory.length === 0) ? (
                   <tr>
-                    <td colSpan={8} className="p-12 text-center text-white/50">
+                    <td colSpan={9} className="p-12 text-center text-white/50">
                       <Activity className="mx-auto mb-3 size-8 opacity-50" />
-                      No open positions. Use the signals above to open trades.
+                      No {activeTab} found.
                     </td>
                   </tr>
                 ) : (
-                  positions.map((p: any) => (
+                  (activeTab === 'positions' ? intradayPositions : activeTab === 'holdings' ? deliveryPositions : filteredHistory).map((p: any) => {
+                    const isHistory = activeTab === 'history';
+                    const pnlVal = isHistory ? (p.net_pnl ?? 0) : (p.unrealised_pnl ?? 0);
+                    const pctVal = isHistory ? (p.pnl_pct ?? 0) : (p.unrealised_pct ?? 0);
+                    return (
                     <tr key={p.trade_id} className="hover:bg-white/[0.02]">
+                      <td className="p-4 whitespace-nowrap text-xs text-white/70">
+                        {new Date(p.entry_time || Date.now()).toLocaleDateString()}<br/>
+                        {new Date(p.entry_time || Date.now()).toLocaleTimeString()}
+                      </td>
                       <td className="p-4">
-                        <div className="font-semibold">{p.index_name}</div>
+                        <div className="flex items-center gap-2">
+                           <span className="font-semibold">{p.index_name}</span>
+                           <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${p.position_type === 'SHORT' ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'}`}>{p.position_type || 'LONG'}</span>
+                        </div>
                         <div className="text-xs text-white/50">{p.trade_type}</div>
                       </td>
                       <td className="p-4">{p.strategy}</td>
                       <td className="p-4">₹{p.entry_price?.toFixed(2)}</td>
-                      <td className="p-4">₹{p.current_price?.toFixed(2)}</td>
-                      <td className="p-4">{p.units}</td>
-                      <td className={`p-4 font-bold ${p.unrealised_pnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                        {p.unrealised_pnl >= 0 ? '+' : ''}₹{p.unrealised_pnl?.toFixed(2)}
-                      </td>
-                      <td className={`p-4 font-bold ${p.unrealised_pct >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                        {p.unrealised_pct >= 0 ? '+' : ''}{p.unrealised_pct?.toFixed(2)}%
-                      </td>
                       <td className="p-4">
-                        <button
-                          onClick={() => closeMut.mutate(p.trade_id)}
-                          disabled={closeMut.isPending}
-                          className="rounded bg-red-500/20 px-3 py-1 text-red-400 transition hover:bg-red-500/30"
-                        >
-                          Close Trade
-                        </button>
+                        <div>₹{(p.exit_price || p.current_price)?.toFixed(2)}</div>
+                        {p.entry_price && (p.exit_price || p.current_price) && (
+                          <div className={`text-xs mt-0.5 ${(p.exit_price || p.current_price) >= p.entry_price ? 'text-green-500' : 'text-red-500'}`}>
+                            {((p.exit_price || p.current_price) - p.entry_price) >= 0 ? '+' : ''}
+                            {((p.exit_price || p.current_price) - p.entry_price).toFixed(2)} (
+                            {(((p.exit_price || p.current_price) - p.entry_price) / p.entry_price * 100).toFixed(2)}%)
+                          </div>
+                        )}
                       </td>
+                      <td className="p-4">{p.units}</td>
+                      <td className={`p-4 font-bold ${pnlVal >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                        {pnlVal >= 0 ? '+' : ''}₹{pnlVal.toFixed(2)}
+                      </td>
+                      <td className={`p-4 font-bold ${pctVal >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                        {pctVal >= 0 ? '+' : ''}{pctVal.toFixed(2)}%
+                      </td>
+                      {activeTab !== 'history' && (
+                        <td className="p-4">
+                          <button
+                            onClick={() => closeMut.mutate(p.trade_id)}
+                            disabled={closeMut.isPending}
+                            className="rounded bg-red-500/20 px-3 py-1 text-red-400 transition hover:bg-red-500/30"
+                          >
+                            Close Trade
+                          </button>
+                        </td>
+                      )}
                     </tr>
-                  ))
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -331,6 +490,21 @@ export default function PaperTradingPage() {
             </div>
 
             <div className="space-y-4">
+              <div className="flex bg-[#0A0A0F] rounded-lg p-1 border border-white/10 mb-4">
+                <button
+                  onClick={() => setTradeForm({...tradeForm, position_type: 'LONG'})}
+                  className={`flex-1 py-2 text-sm font-semibold rounded-md transition ${tradeForm.position_type === 'LONG' ? 'bg-green-500 text-white' : 'text-white/50 hover:text-white hover:bg-white/5'}`}
+                >
+                  Buy (Long)
+                </button>
+                <button
+                  onClick={() => setTradeForm({...tradeForm, position_type: 'SHORT'})}
+                  className={`flex-1 py-2 text-sm font-semibold rounded-md transition ${tradeForm.position_type === 'SHORT' ? 'bg-red-500 text-white' : 'text-white/50 hover:text-white hover:bg-white/5'}`}
+                >
+                  Sell (Short)
+                </button>
+              </div>
+
               <div>
                 <label className="mb-1 block text-sm text-white/60">Index</label>
                 <div className="rounded-lg bg-white/5 p-3 font-semibold">{tradeForm.index}</div>
@@ -368,11 +542,11 @@ export default function PaperTradingPage() {
                 </div>
                 <div className="flex justify-between text-red-400">
                   <span>Stop Loss</span>
-                  <span className="font-bold">₹{activeSignal?.stop_loss?.toFixed(2) || '---'}</span>
+                  <span className="font-bold">₹{(tradeForm.position_type === 'SHORT' ? (activeSignal?.current_price + 2 * (activeSignal?.atr || 0)) : (activeSignal?.current_price - 2 * (activeSignal?.atr || 0)))?.toFixed(2) || '---'}</span>
                 </div>
                 <div className="flex justify-between text-green-400 mt-2">
                   <span>Target</span>
-                  <span className="font-bold">₹{activeSignal?.target_price?.toFixed(2) || '---'}</span>
+                  <span className="font-bold">₹{(tradeForm.position_type === 'SHORT' ? (activeSignal?.current_price - 3 * (activeSignal?.atr || 0)) : (activeSignal?.current_price + 3 * (activeSignal?.atr || 0)))?.toFixed(2) || '---'}</span>
                 </div>
               </div>
 
@@ -403,6 +577,35 @@ export default function PaperTradingPage() {
         </div>
       )}
 
+      {/* Market Closed Modal */}
+      {marketClosedAlert.show && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="w-full max-w-sm rounded-2xl bg-[#12121A] border border-red-500/20 p-6 shadow-[0_0_40px_rgba(239,68,68,0.1)] animate-in zoom-in-95 duration-300">
+            <div className="flex flex-col items-center text-center">
+              <div className="mb-4 flex size-16 items-center justify-center rounded-full bg-red-500/10 text-red-500 animate-bounce">
+                <Clock className="size-8" />
+              </div>
+              <h3 className="mb-2 text-xl font-bold text-white">Market is Closed!</h3>
+              <p className="mb-6 text-sm text-white/60">
+                You cannot open new positions on <span className="font-bold text-white">{marketClosedAlert.index}</span> while the market is closed.
+              </p>
+              <div className="mb-6 rounded-lg bg-white/5 p-4 w-full">
+                <div className="text-xs text-white/50 mb-1">Market Re-opens At</div>
+                <div className="font-mono text-lg font-bold text-violet-400">{marketClosedAlert.reopen}</div>
+                <div className="text-xs text-white/50 mt-1">Tomorrow</div>
+              </div>
+              <button 
+                onClick={() => setMarketClosedAlert({ show: false, index: '', reopen: '' })}
+                className="w-full rounded-lg bg-violet-600 py-3 text-sm font-semibold text-white transition hover:bg-violet-700 active:scale-95"
+              >
+                Understood
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      </div>
     </div>
   );
 }

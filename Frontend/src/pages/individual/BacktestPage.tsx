@@ -199,8 +199,8 @@ export default function IndividualBacktestPage() {
             <div className="text-lg font-semibold text-white">Live price reference</div>
             <p className="mt-1 text-sm text-white/55">Side-by-side proxy feeds while you interpret historical backtest output.</p>
             <div className="mt-4 grid gap-4 lg:grid-cols-2">
-              <LazyQuantWiseCandlestickChart symbol="BTCUSDT" symbolLabel="NIFTY 50 (Live Demo)" interval="5m" height={350} />
-              <LazyQuantWiseCandlestickChart symbol="ETHUSDT" symbolLabel="S&P 500 (Live Demo)" interval="5m" height={350} />
+              <LazyQuantWiseCandlestickChart symbol="NIFTY50" symbolLabel="NIFTY 50" interval="5m" height={350} dataSource="yfinance" />
+              <LazyQuantWiseCandlestickChart symbol="SP500" symbolLabel="S&P 500" interval="5m" height={350} dataSource="yfinance" />
             </div>
           </div>
         </div>

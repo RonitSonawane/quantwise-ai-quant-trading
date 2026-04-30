@@ -156,7 +156,7 @@ export default function OrganizationDashboard() {
               Export chart
             </button>
           </div>
-          <p className="mt-1 text-xs text-white/45">Live candlesticks (Binance proxy). Toggle index, export PNG snapshot.</p>
+          <p className="mt-1 text-xs text-white/45">Live authentic index candlesticks from Yahoo Finance. Toggle index, export PNG snapshot.</p>
           <div className="mt-3 flex flex-wrap gap-2">
             <button
               type="button"
@@ -176,11 +176,12 @@ export default function OrganizationDashboard() {
           <div className="mt-3 overflow-hidden rounded-xl border border-white/[0.06] bg-black/30">
             <LazyQuantWiseCandlestickChart
               key={liveTab}
-              symbol={liveTab === 'nifty' ? 'BTCUSDT' : 'ETHUSDT'}
+              symbol={liveTab === 'nifty' ? 'NIFTY50' : 'SP500'}
               symbolLabel={liveTab === 'nifty' ? 'NIFTY 50 (Live Demo)' : 'S&P 500 (Live Demo)'}
               interval="5m"
               height={350}
               onChartReady={onChartReady}
+              dataSource="yfinance"
             />
           </div>
         </div>
