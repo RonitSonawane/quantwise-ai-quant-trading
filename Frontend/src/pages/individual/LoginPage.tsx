@@ -2,14 +2,12 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { login as apiLogin } from '../../api/auth';
-import { Mail, Lock, LogIn, ArrowRight, Activity, Eye, EyeOff, UserCircle } from 'lucide-react';
+import { Mail, Lock, LogIn, ArrowRight, Activity } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [userType, setUserType] = useState('individual');
-  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -18,10 +16,10 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      const data = await apiLogin({ email, password, user_type: userType });
+      const data = await apiLogin({ email, password });
       login(data.access_token);
-      toast.success(`Welcome back! Logged in as ${userType}`);
-      navigate(`/${userType}/dashboard`);
+      toast.success('Welcome back to QuantWise!');
+      navigate('/paper-trading');
     } catch (err: any) {
       toast.error(err.response?.data?.detail || 'Login failed');
     } finally {
@@ -31,7 +29,6 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#0A0A0F] p-4">
-      {/* Background Glows */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 -left-1/4 w-1/2 h-1/2 bg-violet-600/10 blur-[120px] rounded-full"></div>
         <div className="absolute bottom-1/4 -right-1/4 w-1/2 h-1/2 bg-blue-600/10 blur-[120px] rounded-full"></div>
@@ -43,31 +40,14 @@ export default function LoginPage() {
             <Activity className="text-white size-8" />
           </div>
           <h2 className="text-3xl font-extrabold text-white">Welcome Back</h2>
-          <p className="mt-2 text-sm text-white/50">Access your professional trading suite</p>
+          <p className="mt-2 text-sm text-white/50">Login to access your trading dashboard</p>
         </div>
 
         <div className="rounded-2xl bg-[#12121A] border border-white/5 p-8 shadow-2xl backdrop-blur-xl">
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div className="space-y-4">
-              {/* User Type Selection */}
               <div>
-                <label className="block text-sm font-medium text-white/70 mb-1.5">Account Type</label>
-                <div className="relative">
-                  <UserCircle className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 size-5" />
-                  <select
-                    value={userType}
-                    onChange={(e) => setUserType(e.target.value)}
-                    className="w-full bg-[#0A0A0F] border border-white/10 rounded-xl py-3 pl-11 pr-4 text-white focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none transition appearance-none"
-                  >
-                    <option value="individual">Individual Investor</option>
-                    <option value="student">Student / Researcher</option>
-                    <option value="organization">Organization / Pro</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-white/70 mb-1.5">Email Address</label>
+                <label className="block text-sm font-medium text-white/70 mb-1">Email Address</label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 size-5" />
                   <input
@@ -80,38 +60,28 @@ export default function LoginPage() {
                   />
                 </div>
               </div>
-
               <div>
-                <label className="block text-sm font-medium text-white/70 mb-1.5">Password</label>
+                <label className="block text-sm font-medium text-white/70 mb-1">Password</label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 size-5" />
                   <input
-                    type={showPassword ? 'text' : 'password'}
+                    type="password"
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-[#0A0A0F] border border-white/10 rounded-xl py-3 pl-11 pr-12 text-white placeholder-white/20 focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none transition"
+                    className="w-full bg-[#0A0A0F] border border-white/10 rounded-xl py-3 pl-11 pr-4 text-white placeholder-white/20 focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none transition"
                     placeholder="••••••••"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition"
-                  >
-                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                  </button>
                 </div>
               </div>
             </div>
 
             <div className="flex items-center justify-between text-sm">
-              <label className="flex items-center gap-2 text-white/50 cursor-pointer hover:text-white/70 transition">
+              <label className="flex items-center gap-2 text-white/50 cursor-pointer">
                 <input type="checkbox" className="rounded border-white/10 bg-[#0A0A0F] text-violet-600 focus:ring-violet-500" />
                 Remember me
               </label>
-              <Link to="/forgot-password" size={14} className="text-violet-400 hover:text-violet-300 font-semibold transition">
-                Forgot password?
-              </Link>
+              <a href="#" className="text-violet-400 hover:text-violet-300 transition">Forgot password?</a>
             </div>
 
             <button
@@ -137,4 +107,3 @@ export default function LoginPage() {
     </div>
   );
 }
-

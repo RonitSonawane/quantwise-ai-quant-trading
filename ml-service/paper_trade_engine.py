@@ -120,43 +120,81 @@ def get_open_positions(user_id: str = "default") -> list:
         t['unrealised_pct']  = pnl['pnl_pct']
         t['current_value']   = pnl['current_value']
         result.append(t)
-    if not result:
-        # Provide Fake Data for Demonstration
-        live_nifty = get_live_price("NIFTY50")
-        live_sp500 = get_live_price("SP500")
-        result = [
-            {
-                "trade_id": "MOCK-N50",
-                "index_name": "NIFTY50",
-                "strategy": "Combined_v3",
-                "trade_type": "Delivery",
-                "position_type": "LONG",
-                "entry_price": 24050.00,
-                "current_price": live_nifty.get('price', 24177.00),
-                "units": 41.58,
-                "capital": 1000000,
-                "unrealised_pnl": (live_nifty.get('price', 24177.00) - 24050.00) * 41.58,
-                "unrealised_pct": ((live_nifty.get('price', 24177.00) - 24050.00) / 24050.00) * 100,
-                "entry_time": "2026-04-25 10:15:00",
-                "direction": "BUY"
-            },
-            {
-                "trade_id": "MOCK-SPX",
-                "index_name": "SP500",
-                "strategy": "ZScore_MeanRev",
-                "trade_type": "Intraday",
-                "position_type": "LONG",
-                "entry_price": 5010.00,
-                "current_price": live_sp500.get('price', 5050.00),
-                "units": 199.6,
-                "capital": 1000000,
-                "unrealised_pnl": (live_sp500.get('price', 5050.00) - 5010.00) * 199.6,
-                "unrealised_pct": ((live_sp500.get('price', 5050.00) - 5010.00) / 5010.00) * 100,
-                "entry_time": "2026-04-28 15:30:00",
-                "direction": "BUY"
-            }
-        ]
     return result
+
+def reset_and_seed_db(user_id: str = "default") -> dict:
+    from datetime import timedelta
+    import random
+    
+    # 1. Clear existing data
+    trades_collection.delete_many({"user_id": user_id})
+    
+    # 2. Generate Seed Data
+    seed_trades = []
+    base_time = datetime.utcnow() - timedelta(days=10)
+    
+    # High quality trades to show positive profit
+    configs = [
+        {"idx": "NIFTY50", "type": "Delivery", "pos": "LONG", "cap": 5000000, "days_ago": 9, "hold": 3, "pnl_pct": 2.5},
+        {"idx": "NIFTY50", "type": "Intraday", "pos": "SHORT", "cap": 2000000, "days_ago": 7, "hold": 0.1, "pnl_pct": 1.2},
+        {"idx": "SP500", "type": "Delivery", "pos": "LONG", "cap": 4000000, "days_ago": 6, "hold": 4, "pnl_pct": -0.8},
+        {"idx": "NIFTY50", "type": "Intraday", "pos": "LONG", "cap": 3000000, "days_ago": 5, "hold": 0.2, "pnl_pct": 1.5},
+        {"idx": "SP500", "type": "Intraday", "pos": "SHORT", "cap": 2000000, "days_ago": 4, "hold": 0.1, "pnl_pct": 0.5},
+        {"idx": "NIFTY50", "type": "Delivery", "pos": "SHORT", "cap": 6000000, "days_ago": 3, "hold": 2, "pnl_pct": 3.1},
+        {"idx": "SP500", "type": "Delivery", "pos": "LONG", "cap": 5000000, "days_ago": 2, "hold": 1, "pnl_pct": 1.8},
+        {"idx": "NIFTY50", "type": "Intraday", "pos": "LONG", "cap": 2000000, "days_ago": 1, "hold": 0.3, "pnl_pct": -0.4},
+    ]
+    
+    for cfg in configs:
+        entry_time = base_time + timedelta(days=cfg['days_ago'])
+        exit_time = entry_time + timedelta(days=cfg['hold'])
+        
+        base_price = 24000 if cfg['idx'] == "NIFTY50" else 5000
+        entry_price = base_price + random.uniform(-100, 100)
+        
+        costs = 100 
+        raw_pnl = (cfg['pnl_pct'] / 100 * cfg['cap']) + costs
+        units = cfg['cap'] / entry_price
+        
+        if cfg['pos'] == "LONG":
+            exit_price = (raw_pnl / units) + entry_price
+        else:
+            exit_price = entry_price - (raw_pnl / units)
+            
+        pnl = calculate_pnl(entry_price, exit_price, units, cfg['cap'], cfg['pos'])
+        
+        trade = {
+            "trade_id":      f"SEED-{random.randint(100, 999)}",
+            "user_id":       user_id,
+            "index_name":    cfg['idx'],
+            "strategy":      "Combined_v3",
+            "trade_type":    cfg['type'],
+            "position_type": cfg['pos'],
+            "entry_price":   entry_price,
+            "entry_time":    entry_time,
+            "exit_price":    exit_price,
+            "exit_time":     exit_time,
+            "units":         round(units, 4),
+            "capital":       cfg['cap'],
+            "regime":        "Strong Bull" if cfg['pnl_pct'] > 0 else "Weak Bear",
+            "hmm_conf":      random.uniform(60, 85),
+            "ml_conf":       random.uniform(55, 80),
+            "combined_conf": random.uniform(65, 85),
+            "risk_level":    "LOW",
+            "direction":     "BUY" if cfg['pos'] == "LONG" else "SELL",
+            "gross_pnl":     pnl['gross_pnl'],
+            "net_pnl":       pnl['net_pnl'],
+            "pnl_pct":       pnl['pnl_pct'],
+            "status":        "CLOSED",
+            "is_profit":     pnl['is_profit']
+        }
+        seed_trades.append(trade)
+    
+    if seed_trades:
+        trades_collection.insert_many(seed_trades)
+        
+    return {"message": "Database reset and seeded with 8 historic trades", "trades_count": len(seed_trades)}
+
 
 def get_trade_history(user_id: str = "default") -> list:
     trades = list(trades_collection.find(

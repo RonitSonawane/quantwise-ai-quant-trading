@@ -1,78 +1,71 @@
-/* eslint-disable react-refresh/only-export-components -- provider + hook */
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { getMe, logout as apiLogout } from '../api/auth';
 
-export type UserType = 'individual' | 'student' | 'organization'
-
-type AuthContextValue = {
-  token: string | null
-  userType: UserType | null
-  email: string | null
-  login: (args: { email: string; password: string; userType: UserType }) => void
-  register: (args: { email: string; password: string; userType: UserType }) => void
-  logout: () => void
+interface AuthContextType {
+  user: any;
+  token: string | null;
+  userType: string | null;
+  loading: boolean;
+  login: (token: string) => void;
+  logout: () => void;
+  refetch: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextValue | null>(null)
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const TOKEN_KEY = 'quantwise_jwt'
-const USER_TYPE_KEY = 'quantwise_user_type'
-const EMAIL_KEY = 'quantwise_email'
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<any>(null);
+  const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
+  const [loading, setLoading] = useState(true);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const navigate = useNavigate()
+  const fetchUser = async () => {
+    const storedToken = localStorage.getItem('token');
+    setToken(storedToken);
+    if (!storedToken) {
+      setUser(null);
+      setLoading(false);
+      return;
+    }
+    try {
+      const data = await getMe();
+      setUser(data);
+    } catch (err) {
+      setUser(null);
+      localStorage.removeItem('token');
+      setToken(null);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY))
-  const [userType, setUserType] = useState<UserType | null>(
-    () => (localStorage.getItem(USER_TYPE_KEY) as UserType | null) ?? null,
-  )
-  const [email, setEmail] = useState<string | null>(() => localStorage.getItem(EMAIL_KEY))
+  useEffect(() => {
+    fetchUser();
+  }, []);
 
-  const value = useMemo<AuthContextValue>(
-    () => ({
-      token,
-      userType,
-      email,
-      login: ({ email: em, userType: ut }) => {
-        // Mock JWT for UI flow. Replace with real backend auth later.
-        const fakeToken = `mock.${btoa(`${em}:${ut}`)}.token`
-        localStorage.setItem(TOKEN_KEY, fakeToken)
-        localStorage.setItem(USER_TYPE_KEY, ut)
-        localStorage.setItem(EMAIL_KEY, em)
-        setToken(fakeToken)
-        setUserType(ut)
-        setEmail(em)
-        navigate(`/${ut}/dashboard`, { replace: true })
-      },
-      register: ({ email: em, userType: ut }) => {
-        const fakeToken = `mock.${btoa(`${em}:${ut}`)}.token`
-        localStorage.setItem(TOKEN_KEY, fakeToken)
-        localStorage.setItem(USER_TYPE_KEY, ut)
-        localStorage.setItem(EMAIL_KEY, em)
-        setToken(fakeToken)
-        setUserType(ut)
-        setEmail(em)
-        navigate(`/${ut}/dashboard`, { replace: true })
-      },
-      logout: () => {
-        localStorage.removeItem(TOKEN_KEY)
-        localStorage.removeItem(USER_TYPE_KEY)
-        localStorage.removeItem(EMAIL_KEY)
-        setToken(null)
-        setUserType(null)
-        setEmail(null)
-        navigate('/login', { replace: true })
-      },
-    }),
-    [email, navigate, token, userType],
-  )
+  const login = (newToken: string) => {
+    localStorage.setItem('token', newToken);
+    setToken(newToken);
+    fetchUser();
+  };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
-}
+  const logout = () => {
+    apiLogout();
+    setUser(null);
+    setToken(null);
+  };
 
-export function useAuth() {
-  const ctx = useContext(AuthContext)
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider')
-  return ctx
-}
+  const userType = user?.user_type || null;
 
+  return (
+    <AuthContext.Provider value={{ user, token, userType, loading, login, logout, refetch: fetchUser }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
+  return context;
+};

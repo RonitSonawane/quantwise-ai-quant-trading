@@ -2,15 +2,13 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { register as apiRegister } from '../../api/auth';
-import { User, Mail, Lock, UserPlus, ArrowRight, Activity, Eye, EyeOff, UserCircle } from 'lucide-react';
+import { User, Mail, Lock, UserPlus, ArrowRight, Activity } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function RegisterPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [userType, setUserType] = useState('individual');
-  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -19,10 +17,10 @@ export default function RegisterPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      const data = await apiRegister({ name, email, password, user_type: userType });
+      const data = await apiRegister({ name, email, password });
       login(data.access_token);
       toast.success('Account created! Welcome to QuantWise.');
-      navigate(`/${userType}/dashboard`);
+      navigate('/paper-trading');
     } catch (err: any) {
       toast.error(err.response?.data?.detail || 'Registration failed');
     } finally {
@@ -32,7 +30,6 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#0A0A0F] p-4">
-      {/* Background Glows */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 -right-1/4 w-1/2 h-1/2 bg-violet-600/10 blur-[120px] rounded-full"></div>
         <div className="absolute bottom-1/4 -left-1/4 w-1/2 h-1/2 bg-blue-600/10 blur-[120px] rounded-full"></div>
@@ -50,25 +47,8 @@ export default function RegisterPage() {
         <div className="rounded-2xl bg-[#12121A] border border-white/5 p-8 shadow-2xl backdrop-blur-xl">
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div className="space-y-4">
-              {/* User Type Selection */}
               <div>
-                <label className="block text-sm font-medium text-white/70 mb-1.5">Account Type</label>
-                <div className="relative">
-                  <UserCircle className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 size-5" />
-                  <select
-                    value={userType}
-                    onChange={(e) => setUserType(e.target.value)}
-                    className="w-full bg-[#0A0A0F] border border-white/10 rounded-xl py-3 pl-11 pr-4 text-white focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none transition appearance-none"
-                  >
-                    <option value="individual">Individual Investor</option>
-                    <option value="student">Student / Researcher</option>
-                    <option value="organization">Organization / Pro</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-white/70 mb-1.5">Full Name</label>
+                <label className="block text-sm font-medium text-white/70 mb-1">Full Name</label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 size-5" />
                   <input
@@ -81,9 +61,8 @@ export default function RegisterPage() {
                   />
                 </div>
               </div>
-
               <div>
-                <label className="block text-sm font-medium text-white/70 mb-1.5">Email Address</label>
+                <label className="block text-sm font-medium text-white/70 mb-1">Email Address</label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 size-5" />
                   <input
@@ -96,26 +75,18 @@ export default function RegisterPage() {
                   />
                 </div>
               </div>
-
               <div>
-                <label className="block text-sm font-medium text-white/70 mb-1.5">Password</label>
+                <label className="block text-sm font-medium text-white/70 mb-1">Password</label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 size-5" />
                   <input
-                    type={showPassword ? 'text' : 'password'}
+                    type="password"
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-[#0A0A0F] border border-white/10 rounded-xl py-3 pl-11 pr-12 text-white placeholder-white/20 focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none transition"
+                    className="w-full bg-[#0A0A0F] border border-white/10 rounded-xl py-3 pl-11 pr-4 text-white placeholder-white/20 focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none transition"
                     placeholder="••••••••"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition"
-                  >
-                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                  </button>
                 </div>
               </div>
             </div>
@@ -143,4 +114,3 @@ export default function RegisterPage() {
     </div>
   );
 }
-

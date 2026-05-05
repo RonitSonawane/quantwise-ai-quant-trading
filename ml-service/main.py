@@ -6,10 +6,17 @@ from typing import Any, Dict, Literal, Optional
 
 import numpy as np
 import pandas as pd
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
+from datetime import datetime
+from pydantic import BaseModel, Field, EmailStr
+
+from auth_handler import (
+    get_password_hash, verify_password, create_access_token, get_current_user
+)
+from database import users_collection, transactions_collection, watchlists_collection
+
 
 from backtest_engine import backtest_all, simulate_investment
 from config import DEFAULT_END_DATE, DEFAULT_START_DATE, INITIAL_CAPITAL
@@ -185,6 +192,8 @@ def read_root() -> Dict[str, Any]:
 
 @app.on_event("startup")
 def _startup() -> None:
+    from database import initialize_db
+    initialize_db()
     if not STATE.ready:
         STATE.build(DEFAULT_START_DATE, DEFAULT_END_DATE, float(INITIAL_CAPITAL))
 
@@ -317,13 +326,30 @@ from live_data import get_live_price, get_all_live_prices
 from signal_engine import generate_live_signal
 from paper_trade_engine import (
     open_trade, close_trade,
-    get_open_positions, get_trade_history
+    get_open_positions, get_trade_history,
+    reset_and_seed_db
 )
 from trade_metrics import calculate_metrics
 from pydantic import BaseModel
 from typing import Optional
 
+class UserRegister(BaseModel):
+    name: str
+    email: EmailStr
+    password: str
+    user_type: Optional[str] = "individual"
+
+
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
 class OpenTradeRequest(BaseModel):
+
     index_name: str
     strategy:   str
     trade_type: str
@@ -334,7 +360,65 @@ class OpenTradeRequest(BaseModel):
 class CloseTradeRequest(BaseModel):
     trade_id: str
 
+@app.post("/auth/register", response_model=Token)
+async def register(user_data: UserRegister):
+    if users_collection.find_one({"email": user_data.email}):
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    hashed_password = get_password_hash(user_data.password)
+    new_user = {
+        "name": user_data.name,
+        "email": user_data.email,
+        "password": hashed_password,
+        "user_type": user_data.user_type or "individual",
+        "balance": 1000000.0,
+        "created_at": datetime.utcnow()
+    }
+    users_collection.insert_one(new_user)
+    
+    access_token = create_access_token(data={"sub": user_data.email, "type": new_user["user_type"]})
+    return {"access_token": access_token, "token_type": "bearer"}
+
+
+
+@app.post("/auth/forgot-password")
+async def forgot_password(req: Dict[str, str]):
+    email = req.get("email")
+    name = req.get("name")
+    user = users_collection.find_one({"email": email, "name": name})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found with matching name and email")
+    return {"message": "User verified. You can now reset your password."}
+
+@app.post("/auth/reset-password")
+async def reset_password(req: Dict[str, str]):
+    email = req.get("email")
+    new_password = req.get("new_password")
+    if not email or not new_password:
+        raise HTTPException(status_code=400, detail="Email and new password required")
+    
+    hashed_password = get_password_hash(new_password)
+    res = users_collection.update_one({"email": email}, {"$set": {"password": hashed_password}})
+    if res.modified_count == 0:
+        raise HTTPException(status_code=400, detail="Password reset failed")
+    return {"message": "Password updated successfully"}
+
+@app.post("/auth/login", response_model=Token)
+async def login(user_data: UserLogin):
+    user = users_collection.find_one({"email": user_data.email})
+    if not user or not verify_password(user_data.password, user["password"]):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    access_token = create_access_token(data={"sub": user_data.email, "type": user.get("user_type", "individual")})
+    return {"access_token": access_token, "token_type": "bearer"}
+
+
+@app.get("/auth/me")
+async def get_me(current_user: dict = Depends(get_current_user)):
+    return current_user
+
 @app.get("/live-prices")
+
 async def get_live_prices():
     return get_all_live_prices()
 
@@ -375,29 +459,36 @@ async def get_chart_data(index_name: str, period: str = "5d", interval: str = "5
     return data
 
 @app.post("/paper-trade/open")
-async def open_paper_trade(req: OpenTradeRequest):
+async def open_paper_trade(req: OpenTradeRequest, current_user: dict = Depends(get_current_user)):
     signal = generate_live_signal(req.index_name)
     return open_trade(req.index_name, req.strategy,
                       req.trade_type, req.capital,
-                      signal, req.user_id, req.position_type)
+                      signal, current_user['email'], req.position_type)
+
 
 @app.post("/paper-trade/close")
-async def close_paper_trade(req: CloseTradeRequest):
+async def close_paper_trade(req: CloseTradeRequest, _current_user: dict = Depends(get_current_user)):
     return close_trade(req.trade_id)
 
+
 @app.get("/paper-trade/positions")
-async def get_positions(user_id: str = "default"):
-    return get_open_positions(user_id)
+async def get_positions(current_user: dict = Depends(get_current_user)):
+    return get_open_positions(current_user['email'])
 
 @app.get("/paper-trade/history")
-async def get_history(user_id: str = "default"):
-    return get_trade_history(user_id)
+async def get_history(current_user: dict = Depends(get_current_user)):
+    return get_trade_history(current_user['email'])
 
 @app.get("/paper-trade/metrics")
-async def get_metrics(user_id: str = "default"):
-    return calculate_metrics(user_id)
+async def get_metrics(current_user: dict = Depends(get_current_user)):
+    return calculate_metrics(current_user['email'])
+
 
 @app.get("/db-health")
 async def db_health():
     ok = test_connection()
     return {"mongodb": "connected" if ok else "failed"}
+
+@app.post("/db-reset-seed")
+async def db_reset_seed(user_id: str = "default"):
+    return reset_and_seed_db(user_id)

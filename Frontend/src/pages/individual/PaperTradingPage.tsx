@@ -441,13 +441,19 @@ export default function PaperTradingPage() {
                       <td className="p-4">₹{p.entry_price?.toFixed(2)}</td>
                       <td className="p-4">
                         <div>₹{(p.exit_price || p.current_price)?.toFixed(2)}</div>
-                        {p.entry_price && (p.exit_price || p.current_price) && (
-                          <div className={`text-xs mt-0.5 ${(p.exit_price || p.current_price) >= p.entry_price ? 'text-green-500' : 'text-red-500'}`}>
-                            {((p.exit_price || p.current_price) - p.entry_price) >= 0 ? '+' : ''}
-                            {((p.exit_price || p.current_price) - p.entry_price).toFixed(2)} (
-                            {(((p.exit_price || p.current_price) - p.entry_price) / p.entry_price * 100).toFixed(2)}%)
-                          </div>
-                        )}
+                        {p.entry_price && (p.exit_price || p.current_price) && (() => {
+                          const diff = (p.exit_price || p.current_price) - p.entry_price;
+                          const isShort = p.position_type === 'SHORT';
+                          const isProfit = isShort ? diff <= 0 : diff >= 0;
+                          const pnlValue = isShort ? -diff : diff;
+                          const pnlPct = (pnlValue / p.entry_price) * 100;
+                          return (
+                            <div className={`text-xs mt-0.5 ${isProfit ? 'text-green-500' : 'text-red-500'}`}>
+                              {pnlValue >= 0 ? '+' : ''}{pnlValue.toFixed(2)} ({pnlPct.toFixed(2)}%)
+                            </div>
+                          );
+                        })()}
+
                       </td>
                       <td className="p-4">{p.units}</td>
                       <td className={`p-4 font-bold ${pnlVal >= 0 ? 'text-green-500' : 'text-red-500'}`}>
